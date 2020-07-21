@@ -1,0 +1,13 @@
+div(id=yolo class=main) this is a div
+  hr()
+  h2() section:
+    span(class=em-title)  home
+    span()  page...
+  div()
+    img(src=https://chuckanddons.com/media/wysiwyg/kitten_blog.jpg)
+  ul()
+    li() Item 1
+    li(class=foo) item 2
+    li()
+      span() icon goes here!
+      small()  lovely item 3
