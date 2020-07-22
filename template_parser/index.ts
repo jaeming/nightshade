@@ -1,11 +1,9 @@
-const fs = require('fs')
 import { nodeParser, findParent } from './node_parser'
 
-export const parser = (file) => {
+export const templateParser = (data, js) => {
   try {
-    const data = fs.readFileSync('Home.shade', 'utf8').split('\n')
     const vDom = data.reduce((memo, node, index) => {
-      const element = nodeParser(node)
+      const element = nodeParser(node, js)
       if (!element) return memo
 
       element.parent = findParent(memo, element.indentation, index)    

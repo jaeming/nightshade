@@ -3,16 +3,18 @@ import { nanoid } from 'nanoid'
 
 const ROOT = { tag: "root", attributes: { id: "root" } }
 
-export const nodeParser = (node) => {
+export const nodeParser = (node, js) => {
   const tag = node.split('(')[0].trim()
   if (!tag.length) return
-
-  const text = node.split(') ')[1] || ''
+  let reactive = false
+  let text = node.split(') ')[1] || ''
+  const binding = text.match(/{(.*)}/)
+  if (binding) reactive = true
   const attributes = attributeParser(node.match(/\((.*)\)/))
   const indentation = node.search(/\S|$/)
   const id = nanoid()
   
-  return { tag, attributes, text, indentation, id, parent: null }
+  return { tag, attributes, text, indentation, id, reactive, parent: null }
 }
 
 export const findParent = (memo, indentation, index) => {
