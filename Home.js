@@ -5,7 +5,7 @@
       span(class="em-title")  home
       span()  page...
     br()
-    button(onclick={increment}) increment
+    button(click={increment}) increment
     p() {count}
     div()
       img(src="https://chuckanddons.com/media/wysiwyg/kitten_blog.jpg")
@@ -18,8 +18,8 @@
           span()  ~ a lovely item 3
 template*/
 
-export default {
-  count: 1,
+export default class Home {
+  count = 1
   
   increment() {
     this.count++
