@@ -1,17 +1,19 @@
 import { templateParser } from '../template_parser'
 import Home from '../Home.js'
+import { buildNode } from './node_builder'
+import { buildAttributes } from './attribute_builder'
 const fs = require('fs')
 
-const APP_ROOT = '#root' // TODO make this dynamic
-const EVENT_HANDLERS = ['click', 'input', 'model']
+export const APP_ROOT = '#root' // TODO make this dynamic
+export const EVENT_HANDLERS = ['click', 'input', 'model']
 
 const data = fs.readFileSync('Home.js', 'utf8').split('\n')
 const templateStartIndex = data.findIndex(i => i === "/*template")
 const templateEndIndex = data.findIndex(i => i === "template*/")
-const template = data.slice(templateStartIndex+1, templateEndIndex)
+const template = data.slice(templateStartIndex + 1, templateEndIndex)
 
 const home = new Proxy(new Home(), {
-  set (obj, prop, val) {
+  set(obj, prop, val) {
     obj[prop] = val
     // nodes.filter(n => n.tracks.includes(prop)).forEach(i => {
     //   console.log('I found a depedency that needs to be re-rendered', prop, 'affects ', i.tag, i.id)
@@ -21,57 +23,15 @@ const home = new Proxy(new Home(), {
 })
 
 const nodes = templateParser(template, Home)
-nodes.map(i => build(i, home))
+nodes.forEach(i => build(i, home))
 
 function build(node, js) {
   const el = document.createElement(node.tag)
-  el.setAttribute('data-shade', node.id)
-  Object.keys(node.attributes).map(key => {
-    const binding = node.attributes[key].match(/{(.*)}/)
-    if (binding) {
-      if (EVENT_HANDLERS.includes(key)) {
-        let handler
-        if (key === 'model') {
-          el.value = js[binding[1]]
-          key = 'input'
-          handler = (e) => {
-            js[binding[1]] = e.target.value
-            setTimeout(() => update(js))
-          }
-        } else {
-          const originalHandler = js[binding[1]].bind(js)
-          handler = (e) => {
-            originalHandler(e)
-            setTimeout(() => update(js))
-          }
-        }
-
-        el.addEventListener(key, handler, false);
-      } else {
-        el.setAttribute(key, js[binding[1]])
-      }
-    } else {
-      el.setAttribute(key, node.attributes[key])
-    }      
-  })
-  const binding = node.text.match(/{(.*)}/)
-  if (binding) {
-    el.textContent = js[binding[1]]
-  } else {
-    el.textContent = node.text
-  }
-  if (node.parent.tag === 'root') {
-    const parentEl = document.querySelector(APP_ROOT)
-    parentEl.innerHTML = ''
-    parentEl.appendChild(el)
-  } else {
-    const parentEl = document.querySelector(`[data-shade="${node.parent.id}"]`)
-    parentEl.appendChild(el)
-  }
-  return el
+  buildAttributes(node, el, js)
+  buildNode(node, el, js)
 }
 
-function update(js) {
+export function update(js) {
   nodes.map(n => {
     const el = document.querySelector(`[data-shade="${n.id}"]`)
     Object.keys(n.attributes).map(key => {
