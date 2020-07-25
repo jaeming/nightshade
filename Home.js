@@ -7,6 +7,8 @@
     br()
     button(click={increment}) increment
     p() {count}
+    input(type="text" model={name})
+    p() {name}
     div()
       img(src="https://chuckanddons.com/media/wysiwyg/kitten_blog.jpg")
     ul()
@@ -20,6 +22,7 @@ template*/
 
 export default class Home {
   count = 1
+  name = "Guest"
   
   increment() {
     this.count++

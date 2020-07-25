@@ -3,7 +3,7 @@ import Home from '../Home.js'
 const fs = require('fs')
 
 const APP_ROOT = '#root' // TODO make this dynamic
-const EVENT_HANDLERS = ['click', 'input']
+const EVENT_HANDLERS = ['click', 'input', 'model']
 
 const data = fs.readFileSync('Home.js', 'utf8').split('\n')
 const templateStartIndex = data.findIndex(i => i === "/*template")
@@ -30,11 +30,22 @@ function build(node, js) {
     const binding = node.attributes[key].match(/{(.*)}/)
     if (binding) {
       if (EVENT_HANDLERS.includes(key)) {
-        const originalHandler = js[binding[1]].bind(js)
-        const handler = (e) => {
-          originalHandler(e)
-          setTimeout(() => update(js))
+        let handler
+        if (key === 'model') {
+          el.value = js[binding[1]]
+          key = 'input'
+          handler = (e) => {
+            js[binding[1]] = e.target.value
+            setTimeout(() => update(js))
+          }
+        } else {
+          const originalHandler = js[binding[1]].bind(js)
+          handler = (e) => {
+            originalHandler(e)
+            setTimeout(() => update(js))
+          }
         }
+
         el.addEventListener(key, handler, false);
       } else {
         el.setAttribute(key, js[binding[1]])
