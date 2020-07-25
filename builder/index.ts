@@ -27,22 +27,6 @@ nodes.forEach(i => build(i, home))
 
 function build(node, js) {
   const el = document.createElement(node.tag)
-  buildAttributes(node, el, js)
+  buildAttributes(nodes, node, el, js)
   buildNode(node, el, js)
-}
-
-export function update(js) {
-  nodes.map(n => {
-    const el = document.querySelector(`[data-shade="${n.id}"]`)
-    Object.keys(n.attributes).map(key => {
-      const binding = n.attributes[key].match(/{(.*)}/)
-      if (binding && !EVENT_HANDLERS.includes(key)) {
-        el.setAttribute(key, js[binding[1]])
-      }
-    })
-    const binding = n.text.match(/{(.*)}/)
-    if (binding) {
-      el.textContent = js[binding[1]]
-    }
-  })
 }

@@ -1,6 +1,6 @@
 import { APP_ROOT } from './index'
 
-export function buildNode(node: any, el: any, js: any) {
+export function buildNode(node, el, js) {
     const binding = node.text.match(/{(.*)}/)
     if (binding) {
       el.textContent = js[binding[1]]
