@@ -14,14 +14,15 @@ const templateEndIndex = data.findIndex(i => i === 'template*/')
 const template = data.slice(templateStartIndex + 1, templateEndIndex)
 
 const home = new Proxy(new Home(), {
-  set (obj, prop, val) {
+  set (obj, prop, val, receiver) {
     obj[prop] = val
+
     nodes
-      .filter(n => n.deps.includes(prop))
+      .filter(n => n.conditionals.includes(prop))
       .forEach(i => {
-        i.visible = i.tag === 'if' ? obj[prop] : i.parent.visible
+        i.visible = i.conditionals.every(c => obj[c])
       })
-    update(nodes, obj)
+    update(nodes, receiver)
     return true
   }
 })

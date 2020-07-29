@@ -19,12 +19,16 @@
           div()
             span() something extra goes here!
             span()  ~ a lovely item 3
+      button(click={toggleListTwo}) toggle the other list
+      if(otherList)
+        h2() I wonder if I'll see this
 template*/
 
 export default class Home {
   count = 1
   name = 'Guest'
   showList = false
+  otherList = false
 
   increment () {
     this.count++
@@ -32,5 +36,9 @@ export default class Home {
 
   toggleList () {
     this.showList = !this.showList
+  }
+
+  toggleListTwo () {
+    this.otherList = !this.otherList
   }
 }

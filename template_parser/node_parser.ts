@@ -30,7 +30,8 @@ export const nodeParser = (node, js) => {
     text,
     reactive,
     attributes,
-    deps: [...boundText, ...boundAttrs, ...boundCondition],
+    conditionals: boundCondition,
+    deps: [...boundText, ...boundAttrs], // will use this to selectively re-render at some point
     indentation: node.search(/\S|$/),
     id: nanoid(),
     visible: tag === 'if' ? js[nodeArgs[1]] : true,

@@ -10,7 +10,12 @@ export const templateParser = (data, js) => {
 
       if (!element.parent.visible) {
         element.visible = false
-        element.deps = [...element.deps, ...element.parent.deps] // this is crappy but will mvp for now
+      }
+      if (element.parent.conditionals) {
+        element.conditionals = [
+          ...element.conditionals,
+          ...element.parent.conditionals
+        ]
       }
 
       memo.push(element)
