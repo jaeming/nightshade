@@ -9,26 +9,30 @@ export const APP_ROOT = '#root' // TODO make this dynamic
 export const EVENT_HANDLERS = ['click', 'input', 'model']
 
 const data = fs.readFileSync('Home.js', 'utf8').split('\n')
-const templateStartIndex = data.findIndex(i => i === "/*template")
-const templateEndIndex = data.findIndex(i => i === "template*/")
+const templateStartIndex = data.findIndex(i => i === '/*template')
+const templateEndIndex = data.findIndex(i => i === 'template*/')
 const template = data.slice(templateStartIndex + 1, templateEndIndex)
 
 const home = new Proxy(new Home(), {
-  set(obj, prop, val) {
+  set (obj, prop, val) {
     obj[prop] = val
+    nodes
+      .filter(n => n.deps.includes(prop))
+      .forEach(i => {
+        i.visible = i.tag === 'if' ? obj[prop] : i.parent.visible
+      })
     update(nodes, obj)
-    // nodes.filter(n => n.tracks.includes(prop)).forEach(i => {
-    //   console.log('I found a depedency that needs to be re-rendered', prop, 'affects ', i.tag, i.id)
-    // })
     return true
   }
 })
 
-const nodes = templateParser(template, Home)
-nodes.forEach(i => build(nodes, i, home))
+const nodes = templateParser(template, home)
+nodes.forEach(i => build(i, home))
 
-export function build(nodes, node, js) {
+export function build (node, js) {
+  if (!node.visible) return
+
   const el = document.createElement(node.tag)
-  buildAttributes(nodes, node, el, js)
+  buildAttributes(node, el, js)
   return buildNode(node, el, js)
 }

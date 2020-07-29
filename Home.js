@@ -11,28 +11,26 @@
     p() {name}
     div()
       button(click={toggleList}) toggle list
-    ul(if={showList})
-      li() Item 1
-      li(class="foo") item 2
-      li()
-        div()
-          span() something extra goes here!
-          span()  ~ a lovely item 3
+    if(showList)
+      ul()
+        li() Item 1
+        li(class="foo") item 2
+        li()
+          div()
+            span() something extra goes here!
+            span()  ~ a lovely item 3
 template*/
 
 export default class Home {
   count = 1
-  name = "Guest"
+  name = 'Guest'
   showList = false
-  
-  increment() {
+
+  increment () {
     this.count++
   }
 
-  toggleList() {
+  toggleList () {
     this.showList = !this.showList
   }
 }
-
-
-
