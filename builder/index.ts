@@ -2,6 +2,7 @@ import { templateParser } from '../template_parser'
 import Home from '../Home.js'
 import { buildNode } from './node_builder'
 import { buildAttributes } from './attribute_builder'
+import { update } from './updater'
 const fs = require('fs')
 
 export const APP_ROOT = '#root' // TODO make this dynamic
@@ -15,6 +16,7 @@ const template = data.slice(templateStartIndex + 1, templateEndIndex)
 const home = new Proxy(new Home(), {
   set(obj, prop, val) {
     obj[prop] = val
+    update(nodes, obj)
     // nodes.filter(n => n.tracks.includes(prop)).forEach(i => {
     //   console.log('I found a depedency that needs to be re-rendered', prop, 'affects ', i.tag, i.id)
     // })
@@ -23,10 +25,10 @@ const home = new Proxy(new Home(), {
 })
 
 const nodes = templateParser(template, Home)
-nodes.forEach(i => build(i, home))
+nodes.forEach(i => build(nodes, i, home))
 
-function build(node, js) {
+export function build(nodes, node, js) {
   const el = document.createElement(node.tag)
   buildAttributes(nodes, node, el, js)
-  buildNode(node, el, js)
+  return buildNode(node, el, js)
 }

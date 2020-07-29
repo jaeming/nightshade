@@ -17,4 +17,5 @@ export function buildNode(node, el, js) {
       const parentEl = document.querySelector(`[data-shade="${node.parent.id}"]`)
       parentEl.appendChild(el)
     }
+    return el
   }

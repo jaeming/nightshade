@@ -10,8 +10,8 @@
     input(type="text" model={name})
     p() {name}
     div()
-      img(src="https://chuckanddons.com/media/wysiwyg/kitten_blog.jpg")
-    ul()
+      button(click={toggleList}) toggle list
+    ul(if={showList})
       li() Item 1
       li(class="foo") item 2
       li()
@@ -23,9 +23,14 @@ template*/
 export default class Home {
   count = 1
   name = "Guest"
+  showList = false
   
   increment() {
     this.count++
+  }
+
+  toggleList() {
+    this.showList = !this.showList
   }
 }
 

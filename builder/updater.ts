@@ -1,8 +1,11 @@
 import { EVENT_HANDLERS } from './index'
+import { build } from './index'
 
 export function update(nodes, js) {
     nodes.map(n => {
-      const el = document.querySelector(`[data-shade="${n.id}"]`)
+      let el = document.querySelector(`[data-shade="${n.id}"]`) || build(nodes, n, js)
+      console.log('el', el)
+
       Object.keys(n.attributes).map(key => {
         const binding = n.attributes[key].match(/{(.*)}/)
         if (binding && !EVENT_HANDLERS.includes(key)) {
