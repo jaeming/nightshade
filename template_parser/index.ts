@@ -1,6 +1,7 @@
 import { nodeParser, findParent } from './node_parser'
 
-export const templateParser = (data, js) => {
+export const templateParser = (template, js) => {
+  const data = template.split('\n').filter(i => i.length)
   try {
     const vDom = data.reduce((memo, node, index) => {
       const element = nodeParser(node, js)

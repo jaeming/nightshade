@@ -1,5 +1,8 @@
-/*template
+import Description from './Description'
+
+export const template = `
   div(id=yolo class="main") this is the main div
+    Description()
     hr()
     h2() section:
       span(class="em-title")  home
@@ -22,9 +25,12 @@
       button(click={toggleListTwo}) toggle the other list
       if(otherList)
         h2() I wonder if I'll see this
-template*/
+`
 
 export default class Home {
+  template = template
+  components = { Description }
+
   count = 1
   name = 'Guest'
   showList = false

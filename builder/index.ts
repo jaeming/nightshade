@@ -1,39 +1,34 @@
 import { templateParser } from '../template_parser'
-import Home from '../Home.js'
 import { buildNode } from './node_builder'
 import { buildAttributes } from './attribute_builder'
 import { update } from './updater'
-const fs = require('fs')
 
-export const APP_ROOT = '#root' // TODO make this dynamic
 export const EVENT_HANDLERS = ['click', 'input', 'model']
 
-const data = fs.readFileSync('Home.js', 'utf8').split('\n')
-const templateStartIndex = data.findIndex(i => i === '/*template')
-const templateEndIndex = data.findIndex(i => i === 'template*/')
-const template = data.slice(templateStartIndex + 1, templateEndIndex)
+export function Shade (Klass, template, root) {
+  const klass = new Proxy(new Klass(), {
+    set (obj, prop, val, receiver) {
+      obj[prop] = val
 
-const home = new Proxy(new Home(), {
-  set (obj, prop, val, receiver) {
-    obj[prop] = val
+      nodes
+        .filter(n => n.conditionals.includes(prop))
+        .forEach(i => {
+          i.visible = i.conditionals.every(c => obj[c])
+        })
+      update(nodes, receiver)
+      return true
+    }
+  })
 
-    nodes
-      .filter(n => n.conditionals.includes(prop))
-      .forEach(i => {
-        i.visible = i.conditionals.every(c => obj[c])
-      })
-    update(nodes, receiver)
-    return true
-  }
-})
+  const nodes = templateParser(template, klass)
+  console.log(nodes)
+  nodes.forEach(i => build(i, klass, root))
+}
 
-const nodes = templateParser(template, home)
-nodes.forEach(i => build(i, home))
-
-export function build (node, js) {
+export function build (node, js, root) {
   if (!node.visible) return
 
   const el = document.createElement(node.tag)
   buildAttributes(node, el, js)
-  return buildNode(node, el, js)
+  return buildNode(node, el, js, root)
 }

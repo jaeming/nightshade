@@ -1,4 +1,5 @@
 import { attributeParser } from './attribute_parser'
+import { Shade } from '../builder'
 import { nanoid } from 'nanoid'
 
 const ROOT = { tag: 'root', attributes: { id: 'root' }, visible: true }
@@ -10,7 +11,6 @@ export const nodeParser = (node, js) => {
 
   const text = node.split(') ')[1] || ''
   const attributes = attributeParser(nodeArgs)
-
   const boundText = text.match(/{(.*)}/) ? text.match(/{(.*)}/)[1] : []
   const boundAttrs = Object.keys(attributes)
     .map(i => {
@@ -30,6 +30,7 @@ export const nodeParser = (node, js) => {
     text,
     reactive,
     attributes,
+    component: js.components[tag],
     conditionals: boundCondition,
     deps: [...boundText, ...boundAttrs], // will use this to selectively re-render at some point
     indentation: node.search(/\S|$/),
