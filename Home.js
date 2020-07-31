@@ -1,9 +1,10 @@
 import Description from './Description'
 
-export const template = `
+const template = `
   div(id=yolo class="main") this is the main div
-    Description()
     hr()
+    div() lets try a sub component below:
+      Description()
     h2() section:
       span(class="em-title")  home
       span()  page...

@@ -5,30 +5,27 @@ import { update } from './updater'
 
 export const EVENT_HANDLERS = ['click', 'input', 'model']
 
-export function Shade (Klass, template, root) {
-  const klass = new Proxy(new Klass(), {
+export function Nightshade (Component, root) {
+  const component = new Component()
+  const nodes = templateParser(component)
+  const proxyComponent = new Proxy(component, {
     set (obj, prop, val, receiver) {
       obj[prop] = val
-
-      nodes
-        .filter(n => n.conditionals.includes(prop))
-        .forEach(i => {
-          i.visible = i.conditionals.every(c => obj[c])
-        })
-      update(nodes, receiver)
+      update(obj, prop, nodes, receiver)
       return true
     }
   })
-
-  const nodes = templateParser(template, klass)
-  console.log(nodes)
-  nodes.forEach(i => build(i, klass, root))
+  nodes.forEach(i => build(i, proxyComponent, root))
 }
 
-export function build (node, js, root) {
+export function build (node, component, root) {
   if (!node.visible) return
 
-  const el = document.createElement(node.tag)
-  buildAttributes(node, el, js)
-  return buildNode(node, el, js, root)
+  if (node.component) {
+    return Nightshade(node.component, `[data-shade="${node.parent.id}"]`)
+  } else {
+    const el = document.createElement(node.tag)
+    buildAttributes(node, el, component)
+    return buildNode(node, el, component, root)
+  }
 }

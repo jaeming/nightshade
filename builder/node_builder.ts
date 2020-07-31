@@ -1,10 +1,11 @@
-export function buildNode (node, el, js, root) {
+export function buildNode (node, el, component, root) {
   const binding = node.text.match(/{(.*)}/)
   if (binding) {
-    el.textContent = js[binding[1]]
+    el.textContent = component[binding[1]]
   } else {
     el.textContent = node.text
   }
+
   if (node.parent.tag === 'root') {
     const parentEl = document.querySelector(root)
     parentEl.innerHTML = ''

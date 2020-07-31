@@ -1,8 +1,10 @@
-export const template = `
-  div() {msg}
+const template = `
+  div() a child component...
+    div() {msg}
 `
 
 export default class Description {
-  static template = template
+  template = template
+
   msg = 'Describe your reality...'
 }

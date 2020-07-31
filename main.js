@@ -1,4 +1,4 @@
-import { Shade } from './builder'
-import Home, { template } from './Home'
+import { Nightshade } from './builder'
+import Home from './Home'
 
-Shade(Home, template, '#root')
+Nightshade(Home, '#root')

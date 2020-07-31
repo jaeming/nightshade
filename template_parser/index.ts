@@ -1,10 +1,10 @@
 import { nodeParser, findParent } from './node_parser'
 
-export const templateParser = (template, js) => {
-  const data = template.split('\n').filter(i => i.length)
+export const templateParser = component => {
+  const data = component.template.split('\n').filter(i => i.length)
   try {
     const vDom = data.reduce((memo, node, index) => {
-      const element = nodeParser(node, js)
+      const element = nodeParser(node, component)
       if (!element) return memo
 
       element.parent = findParent(memo, element.indentation, index)
@@ -18,7 +18,6 @@ export const templateParser = (template, js) => {
           ...element.parent.conditionals
         ]
       }
-
       memo.push(element)
       return memo
     }, [])
