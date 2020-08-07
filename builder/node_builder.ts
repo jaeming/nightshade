@@ -8,7 +8,16 @@ export function buildNode (node, el, component, root) {
 
   if (node.parent.tag === 'root') {
     const parentEl = document.querySelector(root)
+    // preserve parent text node
+    let parentText
+    if (parentEl.childNodes?.length) {
+      parentText = document.createTextNode(parentEl.childNodes[0].nodeValue)
+    }
+    // reset parent for re-render
     parentEl.innerHTML = ''
+    // re-insert parent text before appending additional nodes
+    if (parentText) parentEl.appendChild(parentText)
+    // append additional node/s
     parentEl.appendChild(el)
   } else {
     const parentEl = document.querySelector(`[data-shade="${node.parent.id}"]`)

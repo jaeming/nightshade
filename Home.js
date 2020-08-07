@@ -3,7 +3,7 @@ import Description from './Description'
 const template = `
   div(id=yolo class="main") this is the main div
     hr()
-    div() lets try a sub component below:
+    div(id=elementParentOfChild) lets try a sub component below:
       Description()
     h2() section:
       span(class="em-title")  home
