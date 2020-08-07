@@ -1,0 +1,1 @@
+{"version":3,"file":"bundle.js","sources":["../test.ms","../src/main.ts"],"sourcesContent":["export default \"hello from MS!!\";\n","import ms from \"test.ms\";\nconsole.log(\"hello from TS!!\");\nconsole.log(ms);\n"],"names":[],"mappings":";;;;;AAAA,UAAe,iBAAiB;;CCChC,OAAO,CAAC,GAAG,CAAC,iBAAiB,CAAC,CAAC;CAC/B,OAAO,CAAC,GAAG,CAAC,EAAE,CAAC;;;;"}
