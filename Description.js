@@ -1,6 +1,6 @@
 const template = `
-  div() a child component...
-    div() {msg}
+  div() within a child component...
+    div() child says: {msg}
 `
 
 export default class Description {

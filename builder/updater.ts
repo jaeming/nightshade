@@ -1,5 +1,6 @@
 import { EVENT_HANDLERS } from './index'
 import { build } from './index'
+import { interpolatedText } from './node_builder'
 
 export function update (obj, prop, nodes, component) {
   nodes.map(n => {
@@ -22,7 +23,7 @@ export function update (obj, prop, nodes, component) {
 
     const binding = n.text.match(/{(.*)}/)
     if (binding) {
-      el.textContent = component[binding[1]]
+      el.textContent = interpolatedText(component, binding, n.text)
     }
   })
 }

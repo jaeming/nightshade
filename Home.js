@@ -10,9 +10,9 @@ const template = `
       span()  page...
     br()
     button(click={increment}) increment
-    p() {count}
+    p() the current count is {count}
     input(type="text" model={name})
-    p() {name}
+    p() Name: {name}
     div()
       button(click={toggleList}) toggle list
     if(showList)

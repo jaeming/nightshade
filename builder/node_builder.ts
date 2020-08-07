@@ -1,7 +1,7 @@
 export function buildNode (node, el, component, root) {
   const binding = node.text.match(/{(.*)}/)
   if (binding) {
-    el.textContent = component[binding[1]]
+    el.textContent = interpolatedText(component, binding, node.text)
   } else {
     el.textContent = node.text
   }
@@ -15,4 +15,14 @@ export function buildNode (node, el, component, root) {
     parentEl.appendChild(el)
   }
   return el
+}
+
+export function interpolatedText (component, binding, text) {
+  let replacementText = text
+  binding.forEach((bound, index) => {
+    if (index === 0) return
+    const bindingVal = component[binding[1]]
+    replacementText = replacementText.replace(`{${bound}}`, bindingVal)
+  })
+  return replacementText
 }
