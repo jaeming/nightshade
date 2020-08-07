@@ -10,7 +10,8 @@ export const nodeParser = (node, js) => {
 
   const text = node.split(') ')[1] || ''
   const attributes = attributeParser(nodeArgs)
-  const boundText = text.match(/{(.*)}/) ? text.match(/{(.*)}/)[1] : []
+  const interpolated = text.match(/{(.*)}/)
+  const boundText = interpolated ? interpolated[1] : []
   const boundAttrs = Object.keys(attributes)
     .map(i => {
       const bound = attributes[i] && attributes[i].match(/{(.*)}/)

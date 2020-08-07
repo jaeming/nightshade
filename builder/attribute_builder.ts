@@ -14,6 +14,7 @@ export function buildAttributes (node, el, js) {
 
 function handleBoundAttr (key: string, el, js, binding) {
   if (!EVENT_HANDLERS.includes(key)) return el.setAttribute(key, js[binding[1]])
+
   if (key === 'model') return setModel(el, js, binding, key)
 
   const handler = js[binding[1]].bind(js)

@@ -19,6 +19,7 @@ export function update (obj, prop, nodes, component) {
         el.setAttribute(key, component[binding[1]])
       }
     })
+
     const binding = n.text.match(/{(.*)}/)
     if (binding) {
       el.textContent = component[binding[1]]
