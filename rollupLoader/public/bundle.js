@@ -3,10 +3,9 @@
 (function () {
 	'use strict';
 
-	var ms = "hello from MS!!";
+	var template = {template:[{"type":"tag","name":"template","voidElement":false,"attrs":{},"children":[{"type":"text","content":"\n  "},{"type":"tag","name":"div","voidElement":false,"attrs":{},"children":[{"type":"text","content":"\n    Main Div here...\n    "},{"type":"tag","name":"p","voidElement":false,"attrs":{},"children":[{"type":"text","content":"\n      a paragraph...\n    "}]},{"type":"tag","name":"div","voidElement":false,"attrs":{},"children":[{"type":"text","content":"\n      "},{"type":"tag","name":"ul","voidElement":false,"attrs":{},"children":[{"type":"text","content":"\n        "},{"type":"tag","name":"li","voidElement":false,"attrs":{},"children":[{"type":"text","content":"item one"}]},{"type":"tag","name":"li","voidElement":false,"attrs":{},"children":[{"type":"text","content":"item two"}]}]}]}]}]}]};
 
-	console.log("hello from TS!!");
-	console.log(ms);
+	console.log(template);
 
 }());
 //# sourceMappingURL=bundle.js.map

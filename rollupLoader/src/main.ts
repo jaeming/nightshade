@@ -1,3 +1,2 @@
-import ms from "test.ms";
-console.log("hello from TS!!");
-console.log(ms);
+import template from './test.ms'
+console.log(template)
