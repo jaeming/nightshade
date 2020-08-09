@@ -2,7 +2,6 @@ import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import { terser } from 'rollup-plugin-terser'
 import livereload from 'rollup-plugin-livereload'
-var HTML = require('html-parse-stringify')
 const fs = require('fs')
 
 function moonShade () {
@@ -18,12 +17,16 @@ function moonShade () {
       if (id.endsWith('.ms')) {
         this.addWatchFile(`src/${id}`)
         const file = fs.readFileSync(`src/${id}`, 'utf8')
-        const html = file.match(/<template>(.|\n)*?<\/template>/g)
-        const template = JSON.stringify(HTML.parse(html[0]))
-        const script = file.match(/<script>(.|\n)*?<\/script>/g)[0]
-        console.log(script)
+        const script = file
+          .match(/<script>(.|\n)*?<\/script>/g)[0]
+          .replace('<script>', '')
+          .replace('</script>', '')
+        const html = file
+          .replace(script, '')
+          .replace('<script>', '')
+          .replace('</script>', '')
 
-        return `export default {template:${template}}`
+        return `${script}; export const html = ${JSON.stringify(html)};`
       }
       return null // other ids should be handled as usually
     },
