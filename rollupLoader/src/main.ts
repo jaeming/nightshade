@@ -1,8 +1,9 @@
 import HTML from 'html-parse-stringify'
-import script, { html } from './test.ms'
-console.log(script)
-console.log(html)
+import Test from './test.ms'
+const test = new Test()
 
-const template = HTML.parse(html)
+console.log(test)
+
+const template = HTML.parse(test.template)
 
 console.log('html as objects:', template)

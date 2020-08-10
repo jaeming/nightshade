@@ -30,18 +30,19 @@
   const foo = 'bar';
 
     class Foo {
+    template = "<div>\n  Main Div here...\n  <p>\n    a paragraph...\n  </p>\n  <h3>{msg}</h3>\n  <div>\n    <ul>\n      <li>item one</li>\n      <li>item two</li>\n    </ul>\n  </div>\n</div>\n\n\n"
       msg = 'Hello World!'
 
       sayFoo () {
         return foo
       }
     }
-   const html = "<div>\n  Main Div here...\n  <p>\n    a paragraph...\n  </p>\n  <h3>{msg}</h3>\n  <div>\n    <ul>\n      <li>item one</li>\n      <li>item two</li>\n    </ul>\n  </div>\n</div>\n\n\n";
 
-  console.log(Foo);
-  console.log(html);
+  const test = new Foo();
 
-  const template = a.parse(html);
+  console.log(test);
+
+  const template = a.parse(test.template);
 
   console.log('html as objects:', template);
 
