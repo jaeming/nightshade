@@ -1,9 +1,6 @@
-import HTML from 'html-parse-stringify'
-import Test from './test.ms'
-const test = new Test()
+import Reflective from './lib/reflective.ts'
+import Test from './test.reflect'
 
-console.log(test)
+const app = new Reflective()
 
-const template = HTML.parse(test.template)
-
-console.log('html as objects:', template)
+app.mount(Test, '#app')
