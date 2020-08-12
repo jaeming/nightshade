@@ -2,6 +2,7 @@ import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import { terser } from 'rollup-plugin-terser'
 import livereload from 'rollup-plugin-livereload'
+import typescript from '@rollup/plugin-typescript'
 const fs = require('fs')
 
 class HtmlLoader {
@@ -37,7 +38,7 @@ class HtmlLoader {
   }
 }
 
-function reflective () {
+function reflection () {
   return {
     name: 'ReflectiveJS', // this name will show up in warnings and errors
     resolveId (source) {
@@ -68,15 +69,16 @@ function reflective () {
 const production = !process.env.ROLLUP_WATCH
 
 export default {
-  input: 'src/main.ts',
+  input: 'src/main.js',
   output: {
     file: 'public/bundle.js',
     format: 'iife',
     sourcemap: true
   },
   plugins: [
+    typescript({ target: 'esnext' }),
     livereload(),
-    reflective(),
+    reflection(),
     resolve(), // tells Rollup how to find date-fns in node_modules
     commonjs(), // converts date-fns to ES modules
     production && terser() // minify, but only in production

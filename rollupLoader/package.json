@@ -1,5 +1,5 @@
 {
-  "name": "reflective",
+  "name": "reflection",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -19,6 +19,7 @@
     "serve": "~11.3.2"
   },
   "dependencies": {
-    "html-parse-stringify": "^2.0.0"
+    "@rollup/plugin-typescript": "^5.0.2",
+    "tslib": "^2.0.1"
   }
 }
