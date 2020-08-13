@@ -23,9 +23,9 @@
             this.nodes = [];
             this.template = '';
             this.buffer = '';
-            // currentParent = null
             this.currentNode = null;
             this.template = template;
+            console.log(template);
             this.parse();
         }
         parse() {
@@ -40,45 +40,64 @@
             }
             else {
                 if (this.opening)
-                    this.currentNode.tag += this.buffer;
-                if (this.opened) {
-                    this.currentNode.text = this.currentNode.text || '';
-                    this.currentNode.text += this.buffer.replace('\n', '');
-                }
+                    this.setTag();
+                if (this.opened)
+                    this.setText();
             }
         }
         setBracketState() {
             if (this.buffer === Bracket.Open)
                 this.openTag();
+            if (this.buffer === Bracket.Closing)
+                this.closingTag();
             if (this.buffer === Bracket.End)
                 this.endTag();
-            if (this.buffer === Bracket.Closing)
-                this.setState(TagState.Closing);
+        }
+        openTag() {
+            if (!this.currentNode) {
+                this.setRoot();
+            }
+            else if (this.opened) {
+                this.setChild();
+            }
+        }
+        endTag() {
+            if (this.opening) {
+                this.setState(TagState.Opened);
+                this.nodes.push(this.currentNode);
+            }
+            if (this.closing) {
+                this.currentNode = this.findOpenParent(this.currentNode);
+            }
+        }
+        closingTag() {
+            this.setState(TagState.Closing);
+        }
+        findOpenParent(node) {
+            // find closest open parent
+            const parent = node.parent;
+            // if (!parent) return node // no more parents open
+            return parent.state.Closed ? this.findOpenParent(node) : parent;
         }
         setState(state) {
             this.currentNode.state = state;
         }
-        openTag() {
-            if (!this.currentNode) {
-                // root node
-                this.currentNode = { tag: '' };
-                this.currentNode.parent = { tag: 'ROOT', state: TagState.Opened };
-                this.setState(TagState.Opening);
-            }
-            else if (this.opened) {
-                // child
-                const parent = this.currentNode;
-                this.currentNode = { state: TagState.Opening, parent, tag: '' };
-            }
-            this.nodes.push(this.currentNode);
+        setRoot() {
+            this.currentNode = { tag: '' };
+            this.currentNode.parent = { tag: 'ROOT', state: TagState.Opened };
+            this.setState(TagState.Opening);
         }
-        endTag() {
-            if (this.opening)
-                this.setState(TagState.Opened);
-            if (this.closing) {
-                this.setState(TagState.Closed);
-                this.currentNode = this.currentNode.parent;
-            }
+        setChild() {
+            const parent = this.currentNode;
+            this.currentNode = { state: TagState.Opening, parent, tag: '' };
+        }
+        setTag() {
+            this.currentNode.tag += this.buffer;
+        }
+        setText() {
+            // need to actually support text node instead of doing this...
+            this.currentNode.text = this.currentNode.text || '';
+            this.currentNode.text += this.buffer.replace('\n', '');
         }
         get closing() {
             return this.currentNode.state === TagState.Closing;
