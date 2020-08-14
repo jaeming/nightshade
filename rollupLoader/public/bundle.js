@@ -3,6 +3,14 @@
 (function () {
     'use strict';
 
+    // TODO:
+    // Handle self-closing tags (of both variations: "/>" and ">")
+    // add unique ID
+    // add isReflected key (eg: "{msg}")
+    // add attributes
+    //   detect special events/directives, eg:
+    //     onclick='handleClick', model='msg', if='foo===bar', each='items as item'
+    // track dependencies so we know what element to re-render when state changes
     var Bracket;
     (function (Bracket) {
         Bracket["Open"] = "<";
@@ -42,7 +50,7 @@
                 if (this.opening)
                     this.setTag();
                 if (this.opened)
-                    this.setText();
+                    this.setTextNode();
             }
         }
         setBracketState() {
@@ -58,7 +66,9 @@
                 this.setRoot();
             }
             else if (this.opened) {
-                this.setChild();
+                if (this.currentNode.tag === 'text')
+                    this.closeTextNode();
+                this.setChild({});
             }
         }
         endTag() {
@@ -67,10 +77,16 @@
                 this.nodes.push(this.currentNode);
             }
             if (this.closing) {
+                this.setState(TagState.Closed);
                 this.currentNode = this.findOpenParent(this.currentNode);
             }
         }
         closingTag() {
+            if (this.opening) {
+                // discard current node since it was just a closing tag
+                this.currentNode = this.currentNode.parent; // go back to prev node
+            }
+            // TODO: handle self closing tags
             this.setState(TagState.Closing);
         }
         findOpenParent(node) {
@@ -78,6 +94,14 @@
             const parent = node.parent;
             // if (!parent) return node // no more parents open
             return parent.state.Closed ? this.findOpenParent(node) : parent;
+        }
+        closeTextNode() {
+            this.setState(TagState.Closed);
+            if (this.currentNode.content.replace(/ /g, '').length) {
+                this.currentNode.content = this.currentNode.content.trim();
+                this.nodes.push(this.currentNode);
+            }
+            this.currentNode = this.currentNode.parent;
         }
         setState(state) {
             this.currentNode.state = state;
@@ -87,17 +111,28 @@
             this.currentNode.parent = { tag: 'ROOT', state: TagState.Opened };
             this.setState(TagState.Opening);
         }
-        setChild() {
+        setChild({ asTextNode }) {
             const parent = this.currentNode;
-            this.currentNode = { state: TagState.Opening, parent, tag: '' };
+            this.currentNode = asTextNode
+                ? {
+                    state: TagState.Opened,
+                    tag: 'text',
+                    content: this.buffer.replace('\n', ''),
+                    parent
+                }
+                : { state: TagState.Opening, tag: '', parent };
         }
         setTag() {
             this.currentNode.tag += this.buffer;
         }
-        setText() {
-            // need to actually support text node instead of doing this...
-            this.currentNode.text = this.currentNode.text || '';
-            this.currentNode.text += this.buffer.replace('\n', '');
+        setTextNode() {
+            if (this.currentNode.tag === 'text') {
+                // append to current text node
+                this.currentNode.content += this.buffer.replace('\n', '');
+            }
+            else {
+                this.setChild({ asTextNode: true });
+            }
         }
         get closing() {
             return this.currentNode.state === TagState.Closing;
@@ -126,7 +161,7 @@
     const foo = 'bar';
 
       class Foo {
-      template = "<div>\n  Main Div here...\n  <p>\n    a paragraph...\n  </p>\n  <h3>{msg}</h3>\n  <div>\n    <ul>\n      <li>item one</li>\n      <li>item two</li>\n    </ul>\n  </div>\n</div>\n\n\n"
+      template = "<div>\n  Main Div here...\n  <p>\n    a paragraph...\n  </p>\n  <h3>{msg}</h3>\n  <div>\n    <ul>\n      <li>item one</li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</div>\n\n\n"
         msg = 'Hello World!'
 
         sayFoo () {
