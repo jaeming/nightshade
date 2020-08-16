@@ -26,6 +26,22 @@
         TagState["Closing"] = "Closing";
         TagState["Closed"] = "Closed";
     })(TagState || (TagState = {}));
+    const VOID_ELEMENTS = [
+        'img',
+        'br',
+        'input',
+        'area',
+        'base',
+        'col',
+        'embed',
+        'hr',
+        'link',
+        'meta',
+        'param',
+        'source',
+        'track',
+        'wbr'
+    ];
     class TemplateParse {
         constructor(template) {
             this.nodes = [];
@@ -47,6 +63,9 @@
         }
         get isClosing() {
             return this.currentNode.state === TagState.Closing;
+        }
+        get isSelfClosing() {
+            return VOID_ELEMENTS.includes(this.currentNode.tag);
         }
         parse() {
             for (let i = 0; i < this.template.length; i++) {
@@ -164,10 +183,15 @@
             }
         }
         endTag() {
-            if (this.isOpening || this.isAttributes) {
+            if ((this.isOpening || this.isAttributes) && !this.isSelfClosing) {
                 this.setState(TagState.Opened);
                 this.removeEmptyAttrs();
                 this.nodes.push(this.currentNode);
+            }
+            // refactor dupe logic
+            if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
+                this.setSelfClosing();
+                this.currentNode = this.findOpenParent(this.currentNode);
             }
             if (this.isClosing) {
                 this.setState(TagState.Closed);
@@ -175,8 +199,10 @@
             }
         }
         closingTag() {
-            // TODO: handle self closing tags
-            if (this.isOpening) {
+            if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
+                this.setSelfClosing();
+            }
+            if (this.isOpening && !this.isSelfClosing) {
                 // discard current node since it was just a closing tag
                 this.currentNode = this.currentNode.parent; // go back to prev node
             }
@@ -195,6 +221,11 @@
                 this.nodes.push(this.currentNode);
             }
             this.currentNode = this.currentNode.parent;
+        }
+        setSelfClosing() {
+            this.setState(TagState.Closed);
+            this.removeEmptyAttrs();
+            this.nodes.push(this.currentNode);
         }
         setState(state) {
             this.currentNode.state = state;
@@ -232,7 +263,7 @@
     const foo = 'bar';
 
       class Foo {
-      template = "<div>\n  Main Div here...\n  <p id=\"main-text\" class=\"foo bar moar\" data-role=\"test\">\n    a paragraph...\n  </p>\n  <h3>{msg}</h3>\n  <div>\n    <ul>\n      <li>item one</li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</div>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" data-role=\"test\">\n    a paragraph...\n  </p>\n  <h3>{msg}</h3>\n  <br />\n  <div>\n    <ul>\n      <li>\n        item one\n        <input type=\"password\" placeholder=\"enter a password\">\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
 
         sayFoo () {

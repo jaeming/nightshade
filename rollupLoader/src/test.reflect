@@ -1,17 +1,21 @@
-<div>
-  Main Div here...
+<main>
+  Main element here...
   <p id="main-text" class="foo bar moar" data-role="test">
     a paragraph...
   </p>
   <h3>{msg}</h3>
+  <br />
   <div>
     <ul>
-      <li>item one</li>
+      <li>
+        item one
+        <input type="password" placeholder="enter a password">
+      </li>
       <li>item two</li>
     </ul>
   </div>
   more main here!
-</div>
+</main>
 
 <script>
   const foo = 'bar'

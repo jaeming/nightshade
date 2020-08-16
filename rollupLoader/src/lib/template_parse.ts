@@ -23,6 +23,23 @@ enum TagState {
   Closed = 'Closed'
 }
 
+const VOID_ELEMENTS = [
+  'img',
+  'br',
+  'input',
+  'area',
+  'base',
+  'col',
+  'embed',
+  'hr',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr'
+]
+
 export class TemplateParse {
   nodes = []
   template = ''
@@ -49,6 +66,10 @@ export class TemplateParse {
 
   get isClosing () {
     return this.currentNode.state === TagState.Closing
+  }
+
+  get isSelfClosing () {
+    return VOID_ELEMENTS.includes(this.currentNode.tag)
   }
 
   parse () {
@@ -166,10 +187,15 @@ export class TemplateParse {
   }
 
   endTag () {
-    if (this.isOpening || this.isAttributes) {
+    if ((this.isOpening || this.isAttributes) && !this.isSelfClosing) {
       this.setState(TagState.Opened)
       this.removeEmptyAttrs()
       this.nodes.push(this.currentNode)
+    }
+    // refactor dupe logic
+    if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
+      this.setSelfClosing()
+      this.currentNode = this.findOpenParent(this.currentNode)
     }
     if (this.isClosing) {
       this.setState(TagState.Closed)
@@ -178,8 +204,10 @@ export class TemplateParse {
   }
 
   closingTag () {
-    // TODO: handle self closing tags
-    if (this.isOpening) {
+    if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
+      this.setSelfClosing()
+    }
+    if (this.isOpening && !this.isSelfClosing) {
       // discard current node since it was just a closing tag
       this.currentNode = this.currentNode.parent // go back to prev node
     }
@@ -200,6 +228,12 @@ export class TemplateParse {
       this.nodes.push(this.currentNode)
     }
     this.currentNode = this.currentNode.parent
+  }
+
+  setSelfClosing () {
+    this.setState(TagState.Closed)
+    this.removeEmptyAttrs()
+    this.nodes.push(this.currentNode)
   }
 
   setState (state: TagState) {
