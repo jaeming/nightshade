@@ -35,6 +35,22 @@ export class TemplateParse {
     this.parse()
   }
 
+  get isOpening () {
+    return this.currentNode.state === TagState.Opening
+  }
+
+  get isOpened () {
+    return this.currentNode.state === TagState.Opened
+  }
+
+  get isAttributes () {
+    return this.currentNode.state === TagState.Attributes
+  }
+
+  get isClosing () {
+    return this.currentNode.state === TagState.Closing
+  }
+
   parse () {
     for (let i = 0; i < this.template.length; i++) {
       this.buffer = this.template[i]
@@ -44,11 +60,11 @@ export class TemplateParse {
 
   process () {
     if (BRACKETS.includes(this.buffer as Bracket)) {
-      this.setBracketState()
-    } else {
-      if (this.opening) this.setTag()
-      if (this.opened) this.setTextNode()
+      return this.setBracketState()
     }
+    if (this.isOpening) this.setTag()
+    if (this.isAttributes) this.setAttributes()
+    if (this.isOpened) this.setTextNode()
   }
 
   setBracketState () {
@@ -57,32 +73,116 @@ export class TemplateParse {
     if (this.buffer === Bracket.End) this.endTag()
   }
 
+  setTag () {
+    if (this.buffer === ' ') {
+      this.setState(TagState.Attributes)
+      this.setAttributes()
+    } else {
+      this.currentNode.tag += this.buffer
+    }
+  }
+
+  setTextNode () {
+    if (this.currentNode.tag === 'text') {
+      // append to current text node
+      this.currentNode.content += this.buffer.replace('\n', '')
+    } else {
+      this.setChild({ asTextNode: true })
+    }
+  }
+
+  setAttributes () {
+    if (!this.attributes) {
+      this.currentNode.attributes = [{ statement: '', key: '', value: '' }]
+    }
+    let { statement, key, value } = this.currentAttribute
+    let finishAttr = false
+    statement += this.buffer
+
+    if (statement === ' ') return // ignore space seperator
+    if (this.buffer === '=') return this.updateCurrentAttr({ statement }) // update and move on to key
+
+    const setValue = () => {
+      const index = statement.indexOf('=') + 1
+      const isQuote = this.buffer === statement[index]
+      const isClosingQuote = statement.length - 1 > index
+      if (isQuote && isClosingQuote) {
+        finishAttr = true
+      } else {
+        value += this.buffer
+      }
+    }
+    const setKey = () => {
+      if (this.buffer === ' ') {
+        // self-assigned attribute
+        statement = `${key}=${key}`
+        value = key
+        finishAttr = true
+      } else {
+        const keyFinished = this.buffer === "'" || this.buffer === '"'
+        if (!keyFinished) key += this.buffer
+      }
+    }
+
+    statement.includes('=') ? setValue() : setKey()
+    this.updateCurrentAttr({ statement, key, value })
+
+    if (finishAttr) {
+      value = value.replace(/"/g, '') // remove escaped quotes
+      this.updateCurrentAttr({ value })
+      this.currentNode.attributes.push({ statement: '', key: '', value: '' })
+    }
+  }
+
+  get attributes () {
+    return this.currentNode.attributes
+  }
+
+  get currentAttribute () {
+    if (!this.attributes) return
+    return this.attributes[this.attributes.length - 1]
+  }
+
+  removeEmptyAttrs () {
+    if (this.currentAttribute?.statement === '') {
+      this.currentNode.attributes.splice(this.currentNode.attributes.length - 1)
+    }
+  }
+
+  updateCurrentAttr (val) {
+    this.attributes[this.attributes.length - 1] = {
+      ...this.attributes[this.attributes.length - 1],
+      ...val
+    }
+  }
+
   openTag () {
     if (!this.currentNode) {
       this.setRoot()
-    } else if (this.opened) {
+    } else if (this.isOpened) {
       if (this.currentNode.tag === 'text') this.closeTextNode()
       this.setChild({})
     }
   }
 
   endTag () {
-    if (this.opening) {
+    if (this.isOpening || this.isAttributes) {
       this.setState(TagState.Opened)
+      this.removeEmptyAttrs()
       this.nodes.push(this.currentNode)
     }
-    if (this.closing) {
+    if (this.isClosing) {
       this.setState(TagState.Closed)
       this.currentNode = this.findOpenParent(this.currentNode)
     }
   }
 
   closingTag () {
-    if (this.opening) {
+    // TODO: handle self closing tags
+    if (this.isOpening) {
       // discard current node since it was just a closing tag
       this.currentNode = this.currentNode.parent // go back to prev node
     }
-    // TODO: handle self closing tags
     this.setState(TagState.Closing)
   }
 
@@ -122,33 +222,5 @@ export class TemplateParse {
           parent
         }
       : { state: TagState.Opening, tag: '', parent }
-  }
-
-  setTag () {
-    this.currentNode.tag += this.buffer
-  }
-
-  setTextNode () {
-    if (this.currentNode.tag === 'text') {
-      // append to current text node
-      this.currentNode.content += this.buffer.replace('\n', '')
-    } else {
-      this.setChild({ asTextNode: true })
-    }
-  }
-
-  get closing () {
-    return this.currentNode.state === TagState.Closing
-  }
-
-  get opened () {
-    return this.currentNode.state === TagState.Opened
-  }
-
-  get opening () {
-    return (
-      this.currentNode.state === TagState.Opening ||
-      this.currentNode.state === TagState.Attributes
-    )
   }
 }

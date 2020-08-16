@@ -1,6 +1,6 @@
 <div>
   Main Div here...
-  <p>
+  <p id="main-text" class="foo bar moar" data-role="test">
     a paragraph...
   </p>
   <h3>{msg}</h3>
