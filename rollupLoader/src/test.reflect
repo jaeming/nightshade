@@ -1,11 +1,11 @@
 <main>
   Main element here...
-  <p id="main-text" class="foo bar moar" data-role="test">
+  <p id="main-text" class="foo bar moar" small data-role="test">
     a paragraph...
   </p>
   <h3>{msg}</h3>
   <br />
-  <div>
+  <div large>
     <ul>
       <li>
         item one

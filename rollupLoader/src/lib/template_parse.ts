@@ -135,9 +135,8 @@ export class TemplateParse {
     }
     const setKey = () => {
       if (this.buffer === ' ') {
-        // self-assigned attribute
-        statement = `${key}=${key}`
-        value = key
+        // no-assignment attribute
+        statement = key
         finishAttr = true
       } else {
         const keyFinished = this.buffer === "'" || this.buffer === '"'

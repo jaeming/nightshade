@@ -134,9 +134,8 @@
             };
             const setKey = () => {
                 if (this.buffer === ' ') {
-                    // self-assigned attribute
-                    statement = `${key}=${key}`;
-                    value = key;
+                    // no-assignment attribute
+                    statement = key;
                     finishAttr = true;
                 }
                 else {
@@ -263,7 +262,7 @@
     const foo = 'bar';
 
       class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" data-role=\"test\">\n    a paragraph...\n  </p>\n  <h3>{msg}</h3>\n  <br />\n  <div>\n    <ul>\n      <li>\n        item one\n        <input type=\"password\" placeholder=\"enter a password\">\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h3>{msg}</h3>\n  <br />\n  <div large>\n    <ul>\n      <li>\n        item one\n        <input type=\"password\" placeholder=\"enter a password\">\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
 
         sayFoo () {
