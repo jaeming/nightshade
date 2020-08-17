@@ -49,7 +49,6 @@
             this.buffer = '';
             this.currentNode = null;
             this.template = template;
-            console.log(template);
             this.parse();
         }
         get isOpening() {
@@ -247,15 +246,72 @@
         }
     }
 
+    const uid = () => Date.now().toString(36) +
+        Math.random()
+            .toString(36)
+            .substr(2);
+    class Builder {
+        constructor(node, component, root) {
+            this.node = node;
+            this.component = component;
+            this.root = root;
+            this.create();
+        }
+        create() {
+            if (this.node.tag === 'text') {
+                const el = document.createTextNode(this.node.content);
+                this.append(el);
+            }
+            else {
+                const el = document.createElement(this.node.tag);
+                this.setAttributes(el);
+                this.append(el);
+            }
+        }
+        setAttributes(el) {
+            this.node.id = uid();
+            el.setAttribute('data-ref', this.node.id);
+            this.node?.attributes?.forEach(a => el.setAttribute(a.key, a.value));
+        }
+        append(el) {
+            if (this.node.parent?.id) {
+                const parentEl = document.querySelector(`[data-ref="${this.node.parent.id}"]`);
+                parentEl.appendChild(el);
+            }
+            else if (this.root) {
+                this.root.appendChild(el);
+            }
+        }
+    }
+
     class Reflection {
         constructor() {
             this.root = null;
+            this.nodes = [];
+            this.component = null;
+            this.proxy = null;
         }
         mount(Component, element) {
             this.root = document.querySelector(element);
-            const component = new Component();
-            const nodes = new TemplateParse(component.template).nodes;
-            console.log(nodes);
+            this.component = new Component();
+            this.nodes = new TemplateParse(this.component.template).nodes;
+            this.reflect();
+            this.nodes.forEach(n => this.build(n));
+        }
+        reflect() {
+            this.proxy = new Proxy(this.component, {
+                set(obj, prop, val, receiver) {
+                    obj[prop] = val;
+                    this.update(obj, prop, receiver);
+                    return true;
+                }
+            });
+        }
+        update(obj, prop, receiver) {
+            // todo
+        }
+        build(node) {
+            new Builder(node, this.proxy, this.root);
         }
     }
 

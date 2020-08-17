@@ -48,7 +48,6 @@ export class TemplateParse {
 
   constructor (template) {
     this.template = template
-    console.log(template)
     this.parse()
   }
 
