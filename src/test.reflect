@@ -3,7 +3,10 @@
   <p id="main-text" class="foo bar moar" small data-role="test">
     a paragraph...
   </p>
-  <h3>{msg}</h3>
+  <h3>{msg}, {question}... again: {msg}</h3>
+  <p>lets evaluate and expression: </p>
+  <p>2 + 2 = {2 + 2}</p>
+  <p>Should I stay or should I go? {true ? "go" : "stay"}</p>
   <br />
   <div large>
     <ul>
@@ -22,6 +25,7 @@
 
   export default class Foo {
     msg = 'Hello World!'
+    question = 'How are you tonight?'
 
     sayFoo () {
       return foo

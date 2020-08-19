@@ -11,7 +11,8 @@ export class Builder {
 
   create () {
     if (this.node.tag === 'text') {
-      const el = document.createTextNode(this.node.content)
+      const content = this.textContent(this.node.content)
+      const el = document.createTextNode(content)
       this.append(el)
     } else {
       const el = document.createElement(this.node.tag)
@@ -35,5 +36,34 @@ export class Builder {
     } else if (this.root) {
       this.root.appendChild(el)
     }
+  }
+
+  textContent (content) {
+    const bindings = this.bindMatches(content)
+    if (!bindings) return content
+    bindings.forEach(bound => {
+      content = content.replace(bound, this.deriveBound(bound))
+    })
+    return content
+  }
+
+  deriveBound (bound) {
+    const expression = this.unwrapMatch(bound)
+    const property = this.component[expression]
+    return property || this.evaluate(expression)
+  }
+
+  evaluate (expression) {
+    return new Function('return ' + expression)()
+  }
+
+  bindMatches (str: string) {
+    // returns array of matches including the braces
+    return str.match(/\{([^}]+)\}/g)
+  }
+
+  unwrapMatch (str: string) {
+    // unwraps from curly braces
+    return str.replace(/[{}]/g, '')
   }
 }
