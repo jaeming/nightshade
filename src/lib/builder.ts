@@ -5,36 +5,60 @@ const uid = () =>
     .substr(2)
 
 export class Builder {
-  constructor (public node, public component, public root) {
+  el = null
+  constructor (public node, public component, public root, public handlers) {
     this.create()
   }
 
   create () {
     if (this.node.tag === 'text') {
       const content = this.textContent(this.node.content)
-      const el = document.createTextNode(content)
-      this.append(el)
+      this.el = document.createTextNode(content)
+      this.append()
     } else {
-      const el = document.createElement(this.node.tag)
-      this.setAttributes(el)
-      this.append(el)
+      this.el = document.createElement(this.node.tag)
+      this.setRef()
+      this.setAttributes()
+      this.append()
     }
   }
 
-  setAttributes (el) {
-    this.node.id = uid()
-    el.setAttribute('data-ref', this.node.id)
-    this.node?.attributes?.forEach(a => el.setAttribute(a.key, a.value))
+  setAttributes () {
+    this.node?.attributes?.forEach(attr => {
+      const bindings = this.bindMatches(attr.value)
+      const isHandler = Object.values(this.handlers).includes(attr.key)
+      if (isHandler && bindings) return this.setHandler(attr)
+      if (bindings) return this.setAttrBinding(attr, bindings)
+      this.el.setAttribute(attr.key, attr.value)
+    })
   }
 
-  append (el) {
+  setAttrBinding (attr, bindings) {
+    const val = this.unwrapMatch(bindings[0])
+    this.el.setAttribute(attr.key, this.component[val])
+  }
+
+  setHandler (attr) {
+    const [handlerType, handler] = this.deriveHandler(attr)
+    this.el.addEventListener(handlerType, handler, false)
+  }
+
+  deriveHandler ({ key, value }) {
+    const val = this.unwrapMatch(value)
+    const handler = this.component[val].bind(this.component)
+    const handlerIndex = Object.values(this.handlers).findIndex(i => i === key)
+    const handlerType = Object.keys(this.handlers)[handlerIndex]
+    return [handlerType, handler]
+  }
+
+  append () {
     if (this.node.parent?.id) {
       const parentEl = document.querySelector(
         `[data-ref="${this.node.parent.id}"]`
       )
-      parentEl.appendChild(el)
+      parentEl.appendChild(this.el)
     } else if (this.root) {
-      this.root.appendChild(el)
+      this.root.appendChild(this.el)
     }
   }
 
@@ -48,10 +72,10 @@ export class Builder {
   }
 
   deriveBound (bound) {
-    const expression = this.unwrapMatch(bound)
-    return this.component.hasOwnProperty(expression)
-      ? this.component[expression]
-      : this.evaluate(expression)
+    const val = this.unwrapMatch(bound)
+    return this.component.hasOwnProperty(val)
+      ? this.component[val]
+      : this.evaluate(val)
   }
 
   evaluate (expression) {
@@ -66,5 +90,10 @@ export class Builder {
   unwrapMatch (str: string) {
     // unwraps from curly braces
     return str.replace(/[{}]/g, '')
+  }
+
+  setRef () {
+    this.node.id = uid()
+    this.el.setAttribute('data-ref', this.node.id)
   }
 }

@@ -251,36 +251,60 @@
             .toString(36)
             .substr(2);
     class Builder {
-        constructor(node, component, root) {
+        constructor(node, component, root, handlers) {
             this.node = node;
             this.component = component;
             this.root = root;
+            this.handlers = handlers;
+            this.el = null;
             this.create();
         }
         create() {
             if (this.node.tag === 'text') {
                 const content = this.textContent(this.node.content);
-                const el = document.createTextNode(content);
-                this.append(el);
+                this.el = document.createTextNode(content);
+                this.append();
             }
             else {
-                const el = document.createElement(this.node.tag);
-                this.setAttributes(el);
-                this.append(el);
+                this.el = document.createElement(this.node.tag);
+                this.setRef();
+                this.setAttributes();
+                this.append();
             }
         }
-        setAttributes(el) {
-            this.node.id = uid();
-            el.setAttribute('data-ref', this.node.id);
-            this.node?.attributes?.forEach(a => el.setAttribute(a.key, a.value));
+        setAttributes() {
+            this.node?.attributes?.forEach(attr => {
+                const bindings = this.bindMatches(attr.value);
+                const isHandler = Object.values(this.handlers).includes(attr.key);
+                if (isHandler && bindings)
+                    return this.setHandler(attr);
+                if (bindings)
+                    return this.setAttrBinding(attr, bindings);
+                this.el.setAttribute(attr.key, attr.value);
+            });
         }
-        append(el) {
+        setAttrBinding(attr, bindings) {
+            const val = this.unwrapMatch(bindings[0]);
+            this.el.setAttribute(attr.key, this.component[val]);
+        }
+        setHandler(attr) {
+            const [handlerType, handler] = this.deriveHandler(attr);
+            this.el.addEventListener(handlerType, handler, false);
+        }
+        deriveHandler({ key, value }) {
+            const val = this.unwrapMatch(value);
+            const handler = this.component[val].bind(this.component);
+            const handlerIndex = Object.values(this.handlers).findIndex(i => i === key);
+            const handlerType = Object.keys(this.handlers)[handlerIndex];
+            return [handlerType, handler];
+        }
+        append() {
             if (this.node.parent?.id) {
                 const parentEl = document.querySelector(`[data-ref="${this.node.parent.id}"]`);
-                parentEl.appendChild(el);
+                parentEl.appendChild(this.el);
             }
             else if (this.root) {
-                this.root.appendChild(el);
+                this.root.appendChild(this.el);
             }
         }
         textContent(content) {
@@ -293,10 +317,10 @@
             return content;
         }
         deriveBound(bound) {
-            const expression = this.unwrapMatch(bound);
-            return this.component.hasOwnProperty(expression)
-                ? this.component[expression]
-                : this.evaluate(expression);
+            const val = this.unwrapMatch(bound);
+            return this.component.hasOwnProperty(val)
+                ? this.component[val]
+                : this.evaluate(val);
         }
         evaluate(expression) {
             return new Function('return ' + expression)();
@@ -308,6 +332,10 @@
         unwrapMatch(str) {
             // unwraps from curly braces
             return str.replace(/[{}]/g, '');
+        }
+        setRef() {
+            this.node.id = uid();
+            this.el.setAttribute('data-ref', this.node.id);
         }
     }
 
@@ -338,7 +366,8 @@
             this.proxy = new Proxy(this.component, {
                 set(obj, prop, val, receiver) {
                     obj[prop] = val;
-                    this.update(obj, prop, receiver);
+                    // this.update(obj, prop, receiver)
+                    console.log(`prop: ${String(prop)} wants to update to value: ${val}`);
                     return true;
                 }
             });
@@ -347,7 +376,7 @@
             // todo
         }
         build(node) {
-            new Builder(node, this.proxy, this.root);
+            new Builder(node, this.proxy, this.root, this.handlers);
         }
         setOptions(opts) {
             if (opts.handlers)
@@ -358,12 +387,14 @@
     const foo = 'bar';
 
       class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2>the count is {count}</h2>\n  <button>increment count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <p>lets evaluate and expression:</p>\n  <p>2 + 2 = {2 + 2}</p>\n  <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  <br />\n  <div large>\n    <ul>\n      <li>\n        item one\n        <input type=\"password\" placeholder=\"enter a password\" />\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <p>lets evaluate and expression:</p>\n  <p>2 + 2 = {2 + 2}</p>\n  <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  <br />\n  <div large>\n    <ul>\n      <li>\n        item one\n        <input type=\"password\" placeholder=\"enter a password\" />\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
         question = 'How are you tonight?'
         count = 0
+        style = 'counter-class'
 
         increment () {
+          console.log('increment');
           this.count++;
         }
 

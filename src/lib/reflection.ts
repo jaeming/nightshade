@@ -1,7 +1,7 @@
 import { TemplateParse } from './template_parse'
 import { Builder } from './builder'
 
-enum Handler {
+export enum Handler {
   click = 'click',
   if = 'if',
   input = 'input',
@@ -28,7 +28,8 @@ export default class Reflection {
     this.proxy = new Proxy(this.component, {
       set (obj, prop, val, receiver) {
         obj[prop] = val
-        this.update(obj, prop, receiver)
+        // this.update(obj, prop, receiver)
+        console.log(`prop: ${String(prop)} wants to update to value: ${val}`)
         return true
       }
     })
@@ -39,7 +40,7 @@ export default class Reflection {
   }
 
   build (node) {
-    new Builder(node, this.proxy, this.root)
+    new Builder(node, this.proxy, this.root, this.handlers)
   }
 
   setOptions (opts) {

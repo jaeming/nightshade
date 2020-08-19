@@ -3,8 +3,8 @@
   <p id="main-text" class="foo bar moar" small data-role="test">
     a paragraph...
   </p>
-  <h2>the count is {count}</h2>
-  <button>increment count</button>
+  <h2 class="{style}">the count is {count}</h2>
+  <button click="{increment}">increment count</button>
   <h3>{msg}, {question}... again: {msg}</h3>
   <p>lets evaluate and expression:</p>
   <p>2 + 2 = {2 + 2}</p>
@@ -29,8 +29,10 @@
     msg = 'Hello World!'
     question = 'How are you tonight?'
     count = 0
+    style = 'counter-class'
 
     increment () {
+      console.log('increment')
       this.count++
     }
 
