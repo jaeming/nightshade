@@ -1,13 +1,22 @@
 import { TemplateParse } from './template_parse'
 import { Builder } from './builder'
 
+enum Handler {
+  click = 'click',
+  if = 'if',
+  input = 'input',
+  model = 'model'
+}
+
 export default class Reflection {
   root = null
   nodes = []
   component = null
   proxy = null
+  handlers = { ...Handler }
 
-  mount (Component, element) {
+  mount (Component, element, options = {}) {
+    this.setOptions(options)
     this.root = document.querySelector(element)
     this.component = new Component()
     this.nodes = new TemplateParse(this.component.template).nodes
@@ -31,5 +40,9 @@ export default class Reflection {
 
   build (node) {
     new Builder(node, this.proxy, this.root)
+  }
+
+  setOptions (opts) {
+    if (opts.handlers) this.handlers = { ...Handler, ...opts.handlers }
   }
 }

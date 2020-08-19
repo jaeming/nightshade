@@ -294,8 +294,9 @@
         }
         deriveBound(bound) {
             const expression = this.unwrapMatch(bound);
-            const property = this.component[expression];
-            return property || this.evaluate(expression);
+            return this.component.hasOwnProperty(expression)
+                ? this.component[expression]
+                : this.evaluate(expression);
         }
         evaluate(expression) {
             return new Function('return ' + expression)();
@@ -310,14 +311,23 @@
         }
     }
 
+    var Handler;
+    (function (Handler) {
+        Handler["click"] = "click";
+        Handler["if"] = "if";
+        Handler["input"] = "input";
+        Handler["model"] = "model";
+    })(Handler || (Handler = {}));
     class Reflection {
         constructor() {
             this.root = null;
             this.nodes = [];
             this.component = null;
             this.proxy = null;
+            this.handlers = { ...Handler };
         }
-        mount(Component, element) {
+        mount(Component, element, options = {}) {
+            this.setOptions(options);
             this.root = document.querySelector(element);
             this.component = new Component();
             this.nodes = new TemplateParse(this.component.template).nodes;
@@ -339,14 +349,23 @@
         build(node) {
             new Builder(node, this.proxy, this.root);
         }
+        setOptions(opts) {
+            if (opts.handlers)
+                this.handlers = { ...Handler, ...opts.handlers };
+        }
     }
 
     const foo = 'bar';
 
       class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <p>lets evaluate and expression: </p>\n  <p>2 + 2 = {2 + 2}</p>\n  <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  <br />\n  <div large>\n    <ul>\n      <li>\n        item one\n        <input type=\"password\" placeholder=\"enter a password\">\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2>the count is {count}</h2>\n  <button>increment count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <p>lets evaluate and expression:</p>\n  <p>2 + 2 = {2 + 2}</p>\n  <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  <br />\n  <div large>\n    <ul>\n      <li>\n        item one\n        <input type=\"password\" placeholder=\"enter a password\" />\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
         question = 'How are you tonight?'
+        count = 0
+
+        increment () {
+          this.count++;
+        }
 
         sayFoo () {
           return foo

@@ -3,8 +3,10 @@
   <p id="main-text" class="foo bar moar" small data-role="test">
     a paragraph...
   </p>
+  <h2>the count is {count}</h2>
+  <button>increment count</button>
   <h3>{msg}, {question}... again: {msg}</h3>
-  <p>lets evaluate and expression: </p>
+  <p>lets evaluate and expression:</p>
   <p>2 + 2 = {2 + 2}</p>
   <p>Should I stay or should I go? {true ? "go" : "stay"}</p>
   <br />
@@ -12,7 +14,7 @@
     <ul>
       <li>
         item one
-        <input type="password" placeholder="enter a password">
+        <input type="password" placeholder="enter a password" />
       </li>
       <li>item two</li>
     </ul>
@@ -26,6 +28,11 @@
   export default class Foo {
     msg = 'Hello World!'
     question = 'How are you tonight?'
+    count = 0
+
+    increment () {
+      this.count++
+    }
 
     sayFoo () {
       return foo

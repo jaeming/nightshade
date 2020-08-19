@@ -49,8 +49,9 @@ export class Builder {
 
   deriveBound (bound) {
     const expression = this.unwrapMatch(bound)
-    const property = this.component[expression]
-    return property || this.evaluate(expression)
+    return this.component.hasOwnProperty(expression)
+      ? this.component[expression]
+      : this.evaluate(expression)
   }
 
   evaluate (expression) {
