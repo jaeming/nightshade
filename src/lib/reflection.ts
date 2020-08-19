@@ -25,18 +25,21 @@ export default class Reflection {
   }
 
   reflect () {
+    const update = this.update.bind(this)
     this.proxy = new Proxy(this.component, {
       set (obj, prop, val, receiver) {
         obj[prop] = val
-        // this.update(obj, prop, receiver)
-        console.log(`prop: ${String(prop)} wants to update to value: ${val}`)
+        update(obj, prop, receiver)
         return true
       }
     })
   }
 
-  update (obj, prop, receiver) {
+  update (obj, prop, receiver, val) {
     // todo
+    console.log(
+      `prop: ${String(prop)} wants to update to value: ${receiver.count}`
+    )
   }
 
   build (node) {
