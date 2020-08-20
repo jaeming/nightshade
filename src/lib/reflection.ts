@@ -38,7 +38,7 @@ export default class Reflection {
   update (obj, prop, receiver) {
     // todo
     console.log(
-      `prop: ${String(prop)} wants to update to value: ${receiver.count}`
+      `prop: ${String(prop)} wants to update to value: ${receiver[prop]}`
     )
     this.nodes
       .filter(n => n.tracks?.has(prop))

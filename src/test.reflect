@@ -5,6 +5,7 @@
   </p>
   <h2 class="{style}">the count is {count}</h2>
   <button click="{increment}">increment count</button>
+  <button click="{decrement}">decrement count</button>
   <h3>{msg}, {question}... again: {msg}</h3>
   <p>lets evaluate and expression:</p>
   <p>2 + 2 = {2 + 2}</p>
@@ -14,7 +15,10 @@
     <ul>
       <li>
         item one
-        <input type="password" placeholder="enter a password" />
+        <br />
+        <input type="text" value="{someText}" input="{handleInput}" />
+        <p>this is what you entered: {someText}</p>
+        <button click="{clearText}">clear text</button>
       </li>
       <li>item two</li>
     </ul>
@@ -30,14 +34,22 @@
     question = 'How are you tonight?'
     count = 0
     style = 'counter-class'
+    someText = 'test'
 
     increment () {
-      console.log('increment')
       this.count++
     }
 
-    sayFoo () {
-      return foo
+    decrement () {
+      this.count--
+    }
+
+    handleInput (e) {
+      this.someText = e.target.value
+    }
+
+    clearText () {
+      this.someText = ''
     }
   }
 </script>

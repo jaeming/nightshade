@@ -27,7 +27,7 @@ export class Builder {
     if (this.node.tag === 'text') {
       this.updateTextNode()
     } else {
-      // deal with updateing attributes
+      this.setAttributes()
     }
   }
 
@@ -66,8 +66,9 @@ export class Builder {
   }
 
   setAttrBinding (attr, bindings) {
-    const val = this.unwrapMatch(bindings[0])
-    this.el.setAttribute(attr.key, this.component[val])
+    const prop = this.unwrapMatch(bindings[0])
+    this.trackDependency(prop)
+    this.el.setAttribute(attr.key, this.component[prop])
   }
 
   setHandler (attr) {

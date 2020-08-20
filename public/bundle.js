@@ -270,6 +270,9 @@
             if (this.node.tag === 'text') {
                 this.updateTextNode();
             }
+            else {
+                this.setAttributes();
+            }
         }
         createElement() {
             this.el = document.createElement(this.node.tag);
@@ -303,8 +306,9 @@
             });
         }
         setAttrBinding(attr, bindings) {
-            const val = this.unwrapMatch(bindings[0]);
-            this.el.setAttribute(attr.key, this.component[val]);
+            const prop = this.unwrapMatch(bindings[0]);
+            this.trackDependency(prop);
+            this.el.setAttribute(attr.key, this.component[prop]);
         }
         setHandler(attr) {
             const [handlerType, handler] = this.deriveHandler(attr);
@@ -401,7 +405,7 @@
         }
         update(obj, prop, receiver) {
             // todo
-            console.log(`prop: ${String(prop)} wants to update to value: ${receiver.count}`);
+            console.log(`prop: ${String(prop)} wants to update to value: ${receiver[prop]}`);
             this.nodes
                 .filter(n => n.tracks?.has(prop))
                 .forEach(n => this.build(n, { update: true, prop }));
@@ -417,22 +421,28 @@
         }
     }
 
-    const foo = 'bar';
-
-      class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <p>lets evaluate and expression:</p>\n  <p>2 + 2 = {2 + 2}</p>\n  <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  <br />\n  <div large>\n    <ul>\n      <li>\n        item one\n        <input type=\"password\" placeholder=\"enter a password\" />\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
+    class Foo {
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <p>lets evaluate and expression:</p>\n  <p>2 + 2 = {2 + 2}</p>\n  <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  <br />\n  <div large>\n    <ul>\n      <li>\n        item one\n        <br />\n        <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n        <p>this is what you entered: {someText}</p>\n        <button click=\"{clearText}\">clear text</button>\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
         question = 'How are you tonight?'
         count = 0
         style = 'counter-class'
+        someText = 'test'
 
         increment () {
-          console.log('increment');
           this.count++;
         }
 
-        sayFoo () {
-          return foo
+        decrement () {
+          this.count--;
+        }
+
+        handleInput (e) {
+          this.someText = e.target.value;
+        }
+
+        clearText () {
+          this.someText = '';
         }
       }
 
