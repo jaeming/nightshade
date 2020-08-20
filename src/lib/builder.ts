@@ -6,21 +6,53 @@ const uid = () =>
 
 export class Builder {
   el = null
-  constructor (public node, public component, public root, public handlers) {
-    this.create()
+  constructor (
+    public node,
+    public component,
+    public root,
+    public handlers,
+    public options: { update?: boolean; prop?: string } = {}
+  ) {
+    options.update ? this.update() : this.create()
   }
 
   create () {
+    this.node.tag === 'text' ? this.createTextNode() : this.createElement()
+    this.append()
+  }
+
+  update () {
+    // todo: deal with if's
+    this.el = document.querySelector(`[data-ref="${this.node.id}"]`)
     if (this.node.tag === 'text') {
-      const content = this.textContent(this.node.content)
-      this.el = document.createTextNode(content)
-      this.append()
+      this.updateTextNode()
     } else {
-      this.el = document.createElement(this.node.tag)
-      this.setRef()
-      this.setAttributes()
-      this.append()
+      // deal with updateing attributes
     }
+  }
+
+  createElement () {
+    this.el = document.createElement(this.node.tag)
+    this.setRef()
+    this.setAttributes()
+  }
+
+  createTextNode () {
+    this.el = document.createTextNode(this.interpolatedContent())
+  }
+
+  updateTextNode () {
+    for (let n of this.parentEl.childNodes) {
+      if (n.nodeValue.includes(this.node.interpolatedContent)) {
+        n.nodeValue = this.interpolatedContent()
+      }
+    }
+  }
+
+  interpolatedContent () {
+    const content = this.textContent(this.node.content)
+    this.node.interpolatedContent = content
+    return content
   }
 
   setAttributes () {
@@ -53,10 +85,7 @@ export class Builder {
 
   append () {
     if (this.node.parent?.id) {
-      const parentEl = document.querySelector(
-        `[data-ref="${this.node.parent.id}"]`
-      )
-      parentEl.appendChild(this.el)
+      this.parentEl.appendChild(this.el)
     } else if (this.root) {
       this.root.appendChild(this.el)
     }
@@ -66,20 +95,21 @@ export class Builder {
     const bindings = this.bindMatches(content)
     if (!bindings) return content
     bindings.forEach(bound => {
-      content = content.replace(bound, this.deriveBound(bound))
+      const prop = this.unwrapMatch(bound)
+      this.trackDependency(prop)
+      content = content.replace(bound, this.deriveBound(prop))
     })
     return content
   }
 
-  deriveBound (bound) {
-    const val = this.unwrapMatch(bound)
-    return this.component.hasOwnProperty(val)
-      ? this.component[val]
-      : this.evaluate(val)
+  deriveBound (propOrExpression: string) {
+    return this.component.hasOwnProperty(propOrExpression)
+      ? this.component[propOrExpression]
+      : this.evaluate(propOrExpression)
   }
 
-  evaluate (expression) {
-    return new Function('return ' + expression)()
+  evaluate (expression: string) {
+    return new Function(`return ${expression}`)()
   }
 
   bindMatches (str: string) {
@@ -92,8 +122,18 @@ export class Builder {
     return str.replace(/[{}]/g, '')
   }
 
+  trackDependency (prop: string) {
+    this.node.tracks
+      ? this.node.tracks.add(prop)
+      : (this.node.tracks = new Set([prop]))
+  }
+
   setRef () {
     this.node.id = uid()
     this.el.setAttribute('data-ref', this.node.id)
+  }
+
+  get parentEl () {
+    return document.querySelector(`[data-ref="${this.node.parent.id}"]`)
   }
 }

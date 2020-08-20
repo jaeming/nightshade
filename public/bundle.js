@@ -251,26 +251,45 @@
             .toString(36)
             .substr(2);
     class Builder {
-        constructor(node, component, root, handlers) {
+        constructor(node, component, root, handlers, options = {}) {
             this.node = node;
             this.component = component;
             this.root = root;
             this.handlers = handlers;
+            this.options = options;
             this.el = null;
-            this.create();
+            options.update ? this.update() : this.create();
         }
         create() {
+            this.node.tag === 'text' ? this.createTextNode() : this.createElement();
+            this.append();
+        }
+        update() {
+            // todo: deal with if's
+            this.el = document.querySelector(`[data-ref="${this.node.id}"]`);
             if (this.node.tag === 'text') {
-                const content = this.textContent(this.node.content);
-                this.el = document.createTextNode(content);
-                this.append();
+                this.updateTextNode();
             }
-            else {
-                this.el = document.createElement(this.node.tag);
-                this.setRef();
-                this.setAttributes();
-                this.append();
+        }
+        createElement() {
+            this.el = document.createElement(this.node.tag);
+            this.setRef();
+            this.setAttributes();
+        }
+        createTextNode() {
+            this.el = document.createTextNode(this.interpolatedContent());
+        }
+        updateTextNode() {
+            for (let n of this.parentEl.childNodes) {
+                if (n.nodeValue.includes(this.node.interpolatedContent)) {
+                    n.nodeValue = this.interpolatedContent();
+                }
             }
+        }
+        interpolatedContent() {
+            const content = this.textContent(this.node.content);
+            this.node.interpolatedContent = content;
+            return content;
         }
         setAttributes() {
             this.node?.attributes?.forEach(attr => {
@@ -300,8 +319,7 @@
         }
         append() {
             if (this.node.parent?.id) {
-                const parentEl = document.querySelector(`[data-ref="${this.node.parent.id}"]`);
-                parentEl.appendChild(this.el);
+                this.parentEl.appendChild(this.el);
             }
             else if (this.root) {
                 this.root.appendChild(this.el);
@@ -312,18 +330,19 @@
             if (!bindings)
                 return content;
             bindings.forEach(bound => {
-                content = content.replace(bound, this.deriveBound(bound));
+                const prop = this.unwrapMatch(bound);
+                this.trackDependency(prop);
+                content = content.replace(bound, this.deriveBound(prop));
             });
             return content;
         }
-        deriveBound(bound) {
-            const val = this.unwrapMatch(bound);
-            return this.component.hasOwnProperty(val)
-                ? this.component[val]
-                : this.evaluate(val);
+        deriveBound(propOrExpression) {
+            return this.component.hasOwnProperty(propOrExpression)
+                ? this.component[propOrExpression]
+                : this.evaluate(propOrExpression);
         }
         evaluate(expression) {
-            return new Function('return ' + expression)();
+            return new Function(`return ${expression}`)();
         }
         bindMatches(str) {
             // returns array of matches including the braces
@@ -333,9 +352,17 @@
             // unwraps from curly braces
             return str.replace(/[{}]/g, '');
         }
+        trackDependency(prop) {
+            this.node.tracks
+                ? this.node.tracks.add(prop)
+                : (this.node.tracks = new Set([prop]));
+        }
         setRef() {
             this.node.id = uid();
             this.el.setAttribute('data-ref', this.node.id);
+        }
+        get parentEl() {
+            return document.querySelector(`[data-ref="${this.node.parent.id}"]`);
         }
     }
 
@@ -372,12 +399,17 @@
                 }
             });
         }
-        update(obj, prop, receiver, val) {
+        update(obj, prop, receiver) {
             // todo
             console.log(`prop: ${String(prop)} wants to update to value: ${receiver.count}`);
+            this.nodes
+                .filter(n => n.tracks?.has(prop))
+                .forEach(n => this.build(n, { update: true, prop }));
+            // find all elements that track the prop as a dependency and update them
+            // in the case of "if" we need to create a new elements, or remove them
         }
-        build(node) {
-            new Builder(node, this.proxy, this.root, this.handlers);
+        build(node, opts = {}) {
+            new Builder(node, this.proxy, this.root, this.handlers, opts);
         }
         setOptions(opts) {
             if (opts.handlers)

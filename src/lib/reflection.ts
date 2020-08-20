@@ -35,15 +35,20 @@ export default class Reflection {
     })
   }
 
-  update (obj, prop, receiver, val) {
+  update (obj, prop, receiver) {
     // todo
     console.log(
       `prop: ${String(prop)} wants to update to value: ${receiver.count}`
     )
+    this.nodes
+      .filter(n => n.tracks?.has(prop))
+      .forEach(n => this.build(n, { update: true, prop }))
+    // find all elements that track the prop as a dependency and update them
+    // in the case of "if" we need to create a new elements, or remove them
   }
 
-  build (node) {
-    new Builder(node, this.proxy, this.root, this.handlers)
+  build (node, opts = {}) {
+    new Builder(node, this.proxy, this.root, this.handlers, opts)
   }
 
   setOptions (opts) {
