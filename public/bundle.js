@@ -246,21 +246,30 @@
         }
     }
 
+    const CLICK = 'click';
+    const INPUT = 'input';
+    const IF = 'if';
+    const MODEL = 'model';
+    const EACH = 'each';
+    const HANDLERS = [CLICK, INPUT, IF, MODEL, EACH];
+
     const uid = () => Date.now().toString(36) +
         Math.random()
             .toString(36)
             .substr(2);
     class Builder {
-        constructor(node, component, root, handlers, options = {}) {
+        constructor(node, index, nodes, component, root, options = {}) {
             this.node = node;
+            this.index = index;
+            this.nodes = nodes;
             this.component = component;
             this.root = root;
-            this.handlers = handlers;
             this.options = options;
             this.el = null;
             options.update ? this.update() : this.create();
         }
         create() {
+            this.inherit();
             this.node.tag === 'text' ? this.createTextNode() : this.createElement();
             this.append();
         }
@@ -295,11 +304,10 @@
             return content;
         }
         setAttributes() {
-            this.node?.attributes?.forEach(attr => {
-                const bindings = this.bindMatches(attr.value);
-                const isHandler = Object.values(this.handlers).includes(attr.key);
-                if (isHandler && bindings)
+            this.node?.attributes?.forEach((attr) => {
+                if (HANDLERS.includes(attr.key))
                     return this.setHandler(attr);
+                const bindings = this.bindMatches(attr.value);
                 if (bindings)
                     return this.setAttrBinding(attr, bindings);
                 this.el.setAttribute(attr.key, attr.value);
@@ -311,14 +319,15 @@
             this.el.setAttribute(attr.key, this.component[prop]);
         }
         setHandler(attr) {
+            if (attr.key === EACH)
+                return this.setEach(attr);
             const [handlerType, handler] = this.deriveHandler(attr);
             this.el.addEventListener(handlerType, handler, false);
         }
         deriveHandler({ key, value }) {
             const val = this.unwrapMatch(value);
             const handler = this.component[val].bind(this.component);
-            const handlerIndex = Object.values(this.handlers).findIndex(i => i === key);
-            const handlerType = Object.keys(this.handlers)[handlerIndex];
+            const handlerType = HANDLERS.find(i => i === key);
             return [handlerType, handler];
         }
         append() {
@@ -365,33 +374,69 @@
             this.node.id = uid();
             this.el.setAttribute('data-ref', this.node.id);
         }
+        setEach(attr) {
+            const val = this.unwrapMatch(attr.value); // for less confusion accept bracewrap or not
+            const [list, item, index] = val.replace(/\s+/g, '').split(/as|,/);
+            this.node.each = {
+                prop: list,
+                variable: item,
+                indexVar: index,
+                index: 0,
+                root: true
+            };
+            this.trackDependency(list);
+        }
+        inherit() {
+            this.inheritEach();
+        }
+        inheritEach() {
+            const { each } = this.node.parent;
+            if (this.prevNode?.each && !each) {
+                const root = parent => (parent?.each ? root(parent.parent) : parent);
+                const rootEachNode = root(this.prevNode);
+                const eachNodes = this.nodes.slice(this.nodes.findIndex(i => i.id === rootEachNode.id) + 1, this.index);
+                eachNodes.forEach((n, i) => {
+                    const scopedEach = {
+                        [n.each.indexVar]: i + 1,
+                        [n.each.variable]: this.component[n.each.prop][i + 1]
+                    };
+                    const obj = { ...this.component, ...scopedEach };
+                    new Builder(n, i + 1, this.nodes, obj, null);
+                });
+                // find root each and call build on a slice of nodes representing the each iteration, appending to parent
+                // see if the last each.index was length-1 (&& return if so)
+                // increment the each.indexVar, set the each.variable
+            }
+            if (this.node.parent.each) {
+                // const index = each.index + 1
+                this.node.each = { ...each, root: false };
+                Object.assign(this.component, {
+                    [each.indexVar]: each.index,
+                    [each.variable]: this.component[each.prop][each.index]
+                });
+            }
+        }
         get parentEl() {
             return document.querySelector(`[data-ref="${this.node.parent.id}"]`);
         }
+        get prevNode() {
+            return this.nodes[this.index - 1];
+        }
     }
 
-    var Handler;
-    (function (Handler) {
-        Handler["click"] = "click";
-        Handler["if"] = "if";
-        Handler["input"] = "input";
-        Handler["model"] = "model";
-    })(Handler || (Handler = {}));
     class Reflection {
         constructor() {
             this.root = null;
             this.nodes = [];
             this.component = null;
             this.proxy = null;
-            this.handlers = { ...Handler };
         }
         mount(Component, element, options = {}) {
-            this.setOptions(options);
             this.root = document.querySelector(element);
             this.component = new Component();
             this.nodes = new TemplateParse(this.component.template).nodes;
             this.reflect();
-            this.nodes.forEach(n => this.build(n));
+            this.nodes.forEach((n, i) => this.build(n, i));
         }
         reflect() {
             const update = this.update.bind(this);
@@ -403,31 +448,28 @@
                 }
             });
         }
-        update(obj, prop, receiver) {
+        update(prop, receiver) {
             // todo
             console.log(`prop: ${String(prop)} wants to update to value: ${receiver[prop]}`);
             this.nodes
                 .filter(n => n.tracks?.has(prop))
-                .forEach(n => this.build(n, { update: true, prop }));
+                .forEach((n, i) => this.build(n, i, { update: true, prop }));
             // find all elements that track the prop as a dependency and update them
             // in the case of "if" we need to create a new elements, or remove them
         }
-        build(node, opts = {}) {
-            new Builder(node, this.proxy, this.root, this.handlers, opts);
-        }
-        setOptions(opts) {
-            if (opts.handlers)
-                this.handlers = { ...Handler, ...opts.handlers };
+        build(node, index, opts = {}) {
+            new Builder(node, index, this.nodes, this.proxy, this.root, opts);
         }
     }
 
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <p>lets evaluate and expression:</p>\n  <p>2 + 2 = {2 + 2}</p>\n  <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  <br />\n  <div large>\n    <ul>\n      <li>\n        item one\n        <br />\n        <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n        <p>this is what you entered: {someText}</p>\n        <button click=\"{clearText}\">clear text</button>\n      </li>\n      <li>item two</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{clearText}\">clear text</button>\n\n    <ul>\n      <li each=\"{items as item, index}\">no. {index}: {item}</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
         question = 'How are you tonight?'
         count = 0
         style = 'counter-class'
         someText = 'test'
+        items = ['foobar', 'yolo', 'fomo']
 
         increment () {
           this.count++;

@@ -1,22 +1,31 @@
+import { HANDLERS, EACH } from './types'
+
 const uid = () =>
   Date.now().toString(36) +
   Math.random()
     .toString(36)
     .substr(2)
 
+interface Attribute {
+  key: string
+  value: string
+}
+
 export class Builder {
   el = null
   constructor (
     public node,
+    public index,
+    public nodes,
     public component,
     public root,
-    public handlers,
     public options: { update?: boolean; prop?: string } = {}
   ) {
     options.update ? this.update() : this.create()
   }
 
   create () {
+    this.inherit()
     this.node.tag === 'text' ? this.createTextNode() : this.createElement()
     this.append()
   }
@@ -56,10 +65,9 @@ export class Builder {
   }
 
   setAttributes () {
-    this.node?.attributes?.forEach(attr => {
+    this.node?.attributes?.forEach((attr: Attribute) => {
+      if (HANDLERS.includes(attr.key)) return this.setHandler(attr)
       const bindings = this.bindMatches(attr.value)
-      const isHandler = Object.values(this.handlers).includes(attr.key)
-      if (isHandler && bindings) return this.setHandler(attr)
       if (bindings) return this.setAttrBinding(attr, bindings)
       this.el.setAttribute(attr.key, attr.value)
     })
@@ -71,7 +79,9 @@ export class Builder {
     this.el.setAttribute(attr.key, this.component[prop])
   }
 
-  setHandler (attr) {
+  setHandler (attr: Attribute) {
+    if (attr.key === EACH) return this.setEach(attr)
+
     const [handlerType, handler] = this.deriveHandler(attr)
     this.el.addEventListener(handlerType, handler, false)
   }
@@ -79,8 +89,7 @@ export class Builder {
   deriveHandler ({ key, value }) {
     const val = this.unwrapMatch(value)
     const handler = this.component[val].bind(this.component)
-    const handlerIndex = Object.values(this.handlers).findIndex(i => i === key)
-    const handlerType = Object.keys(this.handlers)[handlerIndex]
+    const handlerType = HANDLERS.find(i => i === key)
     return [handlerType, handler]
   }
 
@@ -134,7 +143,62 @@ export class Builder {
     this.el.setAttribute('data-ref', this.node.id)
   }
 
+  setEach (attr: Attribute) {
+    const val = this.unwrapMatch(attr.value) // for less confusion accept bracewrap or not
+    const [list, item, index] = val.replace(/\s+/g, '').split(/as|,/)
+    this.node.each = {
+      prop: list,
+      variable: item,
+      indexVar: index,
+      index: 0,
+      root: true
+    }
+    this.trackDependency(list)
+  }
+
+  inherit () {
+    this.inheritEach()
+  }
+
+  inheritEach () {
+    const { each } = this.node.parent
+    if (this.prevNode?.each && !each) {
+      const root = parent => (parent?.each ? root(parent.parent) : parent)
+      const rootEachNode = root(this.prevNode)
+      const eachNodes = this.nodes.slice(
+        this.nodes.findIndex(i => i.id === rootEachNode.id) + 1,
+        this.index
+      )
+
+      eachNodes.forEach((n, i) => {
+        const scopedEach = {
+          [n.each.indexVar]: i + 1,
+          [n.each.variable]: this.component[n.each.prop][i + 1]
+        }
+        const obj = { ...this.component, ...scopedEach }
+        new Builder(n, i + 1, this.nodes, obj, null)
+      })
+
+      // find root each and call build on a slice of nodes representing the each iteration, appending to parent
+      // see if the last each.index was length-1 (&& return if so)
+      // increment the each.indexVar, set the each.variable
+    }
+
+    if (this.node.parent.each) {
+      // const index = each.index + 1
+      this.node.each = { ...each, root: false }
+      Object.assign(this.component, {
+        [each.indexVar]: each.index,
+        [each.variable]: this.component[each.prop][each.index]
+      })
+    }
+  }
+
   get parentEl () {
     return document.querySelector(`[data-ref="${this.node.parent.id}"]`)
+  }
+
+  get prevNode () {
+    return this.nodes[this.index - 1]
   }
 }

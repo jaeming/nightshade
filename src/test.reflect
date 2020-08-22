@@ -7,20 +7,19 @@
   <button click="{increment}">increment count</button>
   <button click="{decrement}">decrement count</button>
   <h3>{msg}, {question}... again: {msg}</h3>
-  <p>lets evaluate and expression:</p>
-  <p>2 + 2 = {2 + 2}</p>
-  <p>Should I stay or should I go? {true ? "go" : "stay"}</p>
+  <div>
+    <p>lets evaluate and expression:</p>
+    <p>2 + 2 = {2 + 2}</p>
+    <p>Should I stay or should I go? {true ? "go" : "stay"}</p>
+  </div>
   <br />
   <div large>
+    <input type="text" value="{someText}" input="{handleInput}" />
+    <p>this is what you entered: {someText}</p>
+    <button click="{clearText}">clear text</button>
+
     <ul>
-      <li>
-        item one
-        <br />
-        <input type="text" value="{someText}" input="{handleInput}" />
-        <p>this is what you entered: {someText}</p>
-        <button click="{clearText}">clear text</button>
-      </li>
-      <li>item two</li>
+      <li each="{items as item, index}">no. {index}: {item}</li>
     </ul>
   </div>
   more main here!
@@ -35,6 +34,7 @@
     count = 0
     style = 'counter-class'
     someText = 'test'
+    items = ['foobar', 'yolo', 'fomo']
 
     increment () {
       this.count++
