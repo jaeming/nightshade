@@ -1,12 +1,3 @@
-// TODO:
-// Handle self-closing tags (of both variations: "/>" and ">")
-// add unique ID
-// add isReflected key (eg: "{msg}")
-// add attributes
-//   detect special events/directives, eg:
-//     onclick='handleClick', model='msg', if='foo===bar', each='items as item'
-// track dependencies so we know what element to re-render when state changes
-
 enum Bracket {
   Open = '<',
   End = '>',

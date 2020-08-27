@@ -3,14 +3,6 @@
 (function () {
     'use strict';
 
-    // TODO:
-    // Handle self-closing tags (of both variations: "/>" and ">")
-    // add unique ID
-    // add isReflected key (eg: "{msg}")
-    // add attributes
-    //   detect special events/directives, eg:
-    //     onclick='handleClick', model='msg', if='foo===bar', each='items as item'
-    // track dependencies so we know what element to re-render when state changes
     var Bracket;
     (function (Bracket) {
         Bracket["Open"] = "<";
@@ -443,7 +435,7 @@
             this.proxy = new Proxy(this.component, {
                 set(obj, prop, val, receiver) {
                     obj[prop] = val;
-                    update(obj, prop, receiver);
+                    update(prop, receiver);
                     return true;
                 }
             });

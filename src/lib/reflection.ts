@@ -20,7 +20,7 @@ export default class Reflection {
     this.proxy = new Proxy(this.component, {
       set (obj, prop, val, receiver) {
         obj[prop] = val
-        update(obj, prop, receiver)
+        update(prop, receiver)
         return true
       }
     })
