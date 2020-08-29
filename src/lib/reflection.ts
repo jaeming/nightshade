@@ -1,5 +1,5 @@
 import { TemplateParse } from './template_parse'
-import { Builder } from './builder'
+import { Render } from './render'
 
 export default class Reflection {
   root = null
@@ -11,11 +11,11 @@ export default class Reflection {
     this.root = document.querySelector(element)
     this.component = new Component()
     this.nodes = new TemplateParse(this.component.template).nodes
-    this.reflect()
-    this.nodes.forEach((n, i) => this.build(n, i))
+    this.observe()
+    new Render(this.nodes, this.proxy, this.root)
   }
 
-  reflect () {
+  observe () {
     const update = this.update.bind(this)
     this.proxy = new Proxy(this.component, {
       set (obj, prop, val, receiver) {
@@ -27,18 +27,10 @@ export default class Reflection {
   }
 
   update (prop, receiver) {
-    // todo
-    console.log(
-      `prop: ${String(prop)} wants to update to value: ${receiver[prop]}`
-    )
-    this.nodes
-      .filter(n => n.tracks?.has(prop))
-      .forEach((n, i) => this.build(n, i, { update: true, prop }))
+    console.log('update', String(prop), receiver[prop])
+    const nodes = this.nodes.filter(n => n.tracks?.has(prop))
+    new Render(nodes, this.proxy, this.root, { update: true, prop })
     // find all elements that track the prop as a dependency and update them
     // in the case of "if" we need to create a new elements, or remove them
-  }
-
-  build (node, index, opts = {}) {
-    new Builder(node, index, this.nodes, this.proxy, this.root, opts)
   }
 }

@@ -1,35 +1,5 @@
-enum Bracket {
-  Open = '<',
-  End = '>',
-  Closing = '/'
-}
-
-const BRACKETS = [Bracket.Open, Bracket.End, Bracket.Closing]
-
-enum TagState {
-  Opening = 'Opening',
-  Attributes = 'Attributes',
-  Opened = 'Opened',
-  Closing = 'Closing',
-  Closed = 'Closed'
-}
-
-const VOID_ELEMENTS = [
-  'img',
-  'br',
-  'input',
-  'area',
-  'base',
-  'col',
-  'embed',
-  'hr',
-  'link',
-  'meta',
-  'param',
-  'source',
-  'track',
-  'wbr'
-]
+import { uid } from './utils'
+import { TagState, VOID_ELEMENTS, BRACKETS, Bracket } from './types'
 
 export class TemplateParse {
   nodes = []
@@ -179,7 +149,7 @@ export class TemplateParse {
     if ((this.isOpening || this.isAttributes) && !this.isSelfClosing) {
       this.setState(TagState.Opened)
       this.removeEmptyAttrs()
-      this.nodes.push(this.currentNode)
+      this.saveNode()
     }
     // refactor dupe logic
     if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
@@ -214,7 +184,7 @@ export class TemplateParse {
     this.setState(TagState.Closed)
     if (this.currentNode.content.replace(/ /g, '').length) {
       this.currentNode.content = this.currentNode.content.trim()
-      this.nodes.push(this.currentNode)
+      this.saveNode()
     }
     this.currentNode = this.currentNode.parent
   }
@@ -222,7 +192,7 @@ export class TemplateParse {
   setSelfClosing () {
     this.setState(TagState.Closed)
     this.removeEmptyAttrs()
-    this.nodes.push(this.currentNode)
+    this.saveNode()
   }
 
   setState (state: TagState) {
@@ -245,5 +215,14 @@ export class TemplateParse {
           parent
         }
       : { state: TagState.Opening, tag: '', parent }
+  }
+
+  saveNode () {
+    this.currentNode.id = uid()
+    this.nodes.push(this.currentNode)
+    const p = this.currentNode.parent
+    p.children?.length
+      ? p.children.push(this.currentNode)
+      : (p.children = [this.currentNode])
   }
 }

@@ -3,6 +3,19 @@
 (function () {
     'use strict';
 
+    const uid = () => Date.now().toString(36) +
+        Math.random()
+            .toString(36)
+            .substr(2);
+
+    // render
+    const CLICK = 'click';
+    const INPUT = 'input';
+    const IF = 'if';
+    const MODEL = 'model';
+    const EACH = 'each';
+    const HANDLERS = [CLICK, INPUT, IF, MODEL, EACH];
+    // parser
     var Bracket;
     (function (Bracket) {
         Bracket["Open"] = "<";
@@ -34,6 +47,7 @@
         'track',
         'wbr'
     ];
+
     class TemplateParse {
         constructor(template) {
             this.nodes = [];
@@ -176,7 +190,7 @@
             if ((this.isOpening || this.isAttributes) && !this.isSelfClosing) {
                 this.setState(TagState.Opened);
                 this.removeEmptyAttrs();
-                this.nodes.push(this.currentNode);
+                this.saveNode();
             }
             // refactor dupe logic
             if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
@@ -208,14 +222,14 @@
             this.setState(TagState.Closed);
             if (this.currentNode.content.replace(/ /g, '').length) {
                 this.currentNode.content = this.currentNode.content.trim();
-                this.nodes.push(this.currentNode);
+                this.saveNode();
             }
             this.currentNode = this.currentNode.parent;
         }
         setSelfClosing() {
             this.setState(TagState.Closed);
             this.removeEmptyAttrs();
-            this.nodes.push(this.currentNode);
+            this.saveNode();
         }
         setState(state) {
             this.currentNode.state = state;
@@ -236,32 +250,32 @@
                 }
                 : { state: TagState.Opening, tag: '', parent };
         }
+        saveNode() {
+            this.currentNode.id = uid();
+            this.nodes.push(this.currentNode);
+            const p = this.currentNode.parent;
+            p.children?.length
+                ? p.children.push(this.currentNode)
+                : (p.children = [this.currentNode]);
+        }
     }
 
-    const CLICK = 'click';
-    const INPUT = 'input';
-    const IF = 'if';
-    const MODEL = 'model';
-    const EACH = 'each';
-    const HANDLERS = [CLICK, INPUT, IF, MODEL, EACH];
-
-    const uid = () => Date.now().toString(36) +
-        Math.random()
-            .toString(36)
-            .substr(2);
-    class Builder {
-        constructor(node, index, nodes, component, root, options = {}) {
-            this.node = node;
-            this.index = index;
+    class Render {
+        constructor(nodes, component, root, options = {}) {
             this.nodes = nodes;
             this.component = component;
             this.root = root;
             this.options = options;
             this.el = null;
-            options.update ? this.update() : this.create();
+            this.node = null;
+            this.index = 0;
+            while (this.index < this.nodes.length) {
+                this.node = this.nodes[this.index];
+                options.update ? this.update() : this.create();
+                this.index++;
+            }
         }
         create() {
-            this.inherit();
             this.node.tag === 'text' ? this.createTextNode() : this.createElement();
             this.append();
         }
@@ -285,7 +299,8 @@
         }
         updateTextNode() {
             for (let n of this.parentEl.childNodes) {
-                if (n.nodeValue.includes(this.node.interpolatedContent)) {
+                if (n.nodeName === '#text' &&
+                    n.nodeValue.includes(this.node.interpolatedContent)) {
                     n.nodeValue = this.interpolatedContent();
                 }
             }
@@ -302,7 +317,7 @@
                 const bindings = this.bindMatches(attr.value);
                 if (bindings)
                     return this.setAttrBinding(attr, bindings);
-                this.el.setAttribute(attr.key, attr.value);
+                this.el?.setAttribute(attr.key, attr.value);
             });
         }
         setAttrBinding(attr, bindings) {
@@ -363,50 +378,33 @@
                 : (this.node.tracks = new Set([prop]));
         }
         setRef() {
-            this.node.id = uid();
             this.el.setAttribute('data-ref', this.node.id);
         }
         setEach(attr) {
             const val = this.unwrapMatch(attr.value); // for less confusion accept bracewrap or not
-            const [list, item, index] = val.replace(/\s+/g, '').split(/as|,/);
-            this.node.each = {
-                prop: list,
-                variable: item,
-                indexVar: index,
-                index: 0,
-                root: true
-            };
-            this.trackDependency(list);
+            const [prop, item, index] = val.replace(/\s+/g, '').split(/as|,/);
+            const nodes = this.component[prop].reduce((memo, item, index) => {
+                if (index === 0)
+                    return memo; // we get this first one for free on original render
+                const node = this.cloneCurrentNode();
+                memo = [...memo, node, ...node.children];
+                return memo;
+            }, []);
+            this.parentEl.innerHTML = '';
+            new Render(nodes, this.component, null);
+            this.index = this.index + (this.node.children.length - 1);
+            this.trackDependency(prop);
         }
-        inherit() {
-            this.inheritEach();
-        }
-        inheritEach() {
-            const { each } = this.node.parent;
-            if (this.prevNode?.each && !each) {
-                const root = parent => (parent?.each ? root(parent.parent) : parent);
-                const rootEachNode = root(this.prevNode);
-                const eachNodes = this.nodes.slice(this.nodes.findIndex(i => i.id === rootEachNode.id) + 1, this.index);
-                eachNodes.forEach((n, i) => {
-                    const scopedEach = {
-                        [n.each.indexVar]: i + 1,
-                        [n.each.variable]: this.component[n.each.prop][i + 1]
-                    };
-                    const obj = { ...this.component, ...scopedEach };
-                    new Builder(n, i + 1, this.nodes, obj, null);
-                });
-                // find root each and call build on a slice of nodes representing the each iteration, appending to parent
-                // see if the last each.index was length-1 (&& return if so)
-                // increment the each.indexVar, set the each.variable
-            }
-            if (this.node.parent.each) {
-                // const index = each.index + 1
-                this.node.each = { ...each, root: false };
-                Object.assign(this.component, {
-                    [each.indexVar]: each.index,
-                    [each.variable]: this.component[each.prop][each.index]
-                });
-            }
+        cloneCurrentNode() {
+            const id = uid();
+            const attributes = this.node.attributes.filter(n => n.key !== EACH);
+            const node = { ...this.node, id, attributes };
+            node.children = node.children.map(child => ({
+                ...child,
+                id: uid(),
+                parent: node
+            }));
+            return node;
         }
         get parentEl() {
             return document.querySelector(`[data-ref="${this.node.parent.id}"]`);
@@ -427,10 +425,10 @@
             this.root = document.querySelector(element);
             this.component = new Component();
             this.nodes = new TemplateParse(this.component.template).nodes;
-            this.reflect();
-            this.nodes.forEach((n, i) => this.build(n, i));
+            this.observe();
+            new Render(this.nodes, this.proxy, this.root);
         }
-        reflect() {
+        observe() {
             const update = this.update.bind(this);
             this.proxy = new Proxy(this.component, {
                 set(obj, prop, val, receiver) {
@@ -441,27 +439,22 @@
             });
         }
         update(prop, receiver) {
-            // todo
-            console.log(`prop: ${String(prop)} wants to update to value: ${receiver[prop]}`);
-            this.nodes
-                .filter(n => n.tracks?.has(prop))
-                .forEach((n, i) => this.build(n, i, { update: true, prop }));
+            console.log('update', String(prop), receiver[prop]);
+            const nodes = this.nodes.filter(n => n.tracks?.has(prop));
+            new Render(nodes, this.proxy, this.root, { update: true, prop });
             // find all elements that track the prop as a dependency and update them
             // in the case of "if" we need to create a new elements, or remove them
-        }
-        build(node, index, opts = {}) {
-            new Builder(node, index, this.nodes, this.proxy, this.root, opts);
         }
     }
 
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{clearText}\">clear text</button>\n\n    <ul>\n      <li each=\"{items as item, index}\">no. {index}: {item}</li>\n    </ul>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"nice\">hi to each</li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
         question = 'How are you tonight?'
         count = 0
         style = 'counter-class'
         someText = 'test'
-        items = ['foobar', 'yolo', 'fomo']
+        items = []
 
         increment () {
           this.count++;
@@ -473,6 +466,10 @@
 
         handleInput (e) {
           this.someText = e.target.value;
+        }
+
+        addText () {
+          this.items = [...this.items, this.someText];
         }
 
         clearText () {

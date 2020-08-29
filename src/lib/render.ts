@@ -1,31 +1,25 @@
-import { HANDLERS, EACH } from './types'
+import { HANDLERS, EACH, Options, Attribute } from './types'
+import { uid } from './utils'
 
-const uid = () =>
-  Date.now().toString(36) +
-  Math.random()
-    .toString(36)
-    .substr(2)
-
-interface Attribute {
-  key: string
-  value: string
-}
-
-export class Builder {
+export class Render {
   el = null
+  node = null
+  index = 0
+
   constructor (
-    public node,
-    public index,
     public nodes,
     public component,
     public root,
-    public options: { update?: boolean; prop?: string } = {}
+    public options: Options = {}
   ) {
-    options.update ? this.update() : this.create()
+    while (this.index < this.nodes.length) {
+      this.node = this.nodes[this.index]
+      options.update ? this.update() : this.create()
+      this.index++
+    }
   }
 
   create () {
-    this.inherit()
     this.node.tag === 'text' ? this.createTextNode() : this.createElement()
     this.append()
   }
@@ -52,7 +46,10 @@ export class Builder {
 
   updateTextNode () {
     for (let n of this.parentEl.childNodes) {
-      if (n.nodeValue.includes(this.node.interpolatedContent)) {
+      if (
+        n.nodeName === '#text' &&
+        n.nodeValue.includes(this.node.interpolatedContent)
+      ) {
         n.nodeValue = this.interpolatedContent()
       }
     }
@@ -69,7 +66,7 @@ export class Builder {
       if (HANDLERS.includes(attr.key)) return this.setHandler(attr)
       const bindings = this.bindMatches(attr.value)
       if (bindings) return this.setAttrBinding(attr, bindings)
-      this.el.setAttribute(attr.key, attr.value)
+      this.el?.setAttribute(attr.key, attr.value)
     })
   }
 
@@ -139,59 +136,37 @@ export class Builder {
   }
 
   setRef () {
-    this.node.id = uid()
     this.el.setAttribute('data-ref', this.node.id)
   }
 
   setEach (attr: Attribute) {
     const val = this.unwrapMatch(attr.value) // for less confusion accept bracewrap or not
-    const [list, item, index] = val.replace(/\s+/g, '').split(/as|,/)
-    this.node.each = {
-      prop: list,
-      variable: item,
-      indexVar: index,
-      index: 0,
-      root: true
-    }
-    this.trackDependency(list)
+    const [prop, item, index] = val.replace(/\s+/g, '').split(/as|,/)
+
+    const nodes = this.component[prop].reduce((memo, item, index) => {
+      if (index === 0) return memo // we get this first one for free on original render
+
+      const node = this.cloneCurrentNode()
+      memo = [...memo, node, ...node.children]
+      return memo
+    }, [])
+    this.parentEl.innerHTML = ''
+    new Render(nodes, this.component, null)
+    this.index = this.index + (this.node.children.length - 1)
+
+    this.trackDependency(prop)
   }
 
-  inherit () {
-    this.inheritEach()
-  }
-
-  inheritEach () {
-    const { each } = this.node.parent
-    if (this.prevNode?.each && !each) {
-      const root = parent => (parent?.each ? root(parent.parent) : parent)
-      const rootEachNode = root(this.prevNode)
-      const eachNodes = this.nodes.slice(
-        this.nodes.findIndex(i => i.id === rootEachNode.id) + 1,
-        this.index
-      )
-
-      eachNodes.forEach((n, i) => {
-        const scopedEach = {
-          [n.each.indexVar]: i + 1,
-          [n.each.variable]: this.component[n.each.prop][i + 1]
-        }
-        const obj = { ...this.component, ...scopedEach }
-        new Builder(n, i + 1, this.nodes, obj, null)
-      })
-
-      // find root each and call build on a slice of nodes representing the each iteration, appending to parent
-      // see if the last each.index was length-1 (&& return if so)
-      // increment the each.indexVar, set the each.variable
-    }
-
-    if (this.node.parent.each) {
-      // const index = each.index + 1
-      this.node.each = { ...each, root: false }
-      Object.assign(this.component, {
-        [each.indexVar]: each.index,
-        [each.variable]: this.component[each.prop][each.index]
-      })
-    }
+  cloneCurrentNode () {
+    const id = uid()
+    const attributes = this.node.attributes.filter(n => n.key !== EACH)
+    const node = { ...this.node, id, attributes }
+    node.children = node.children.map(child => ({
+      ...child,
+      id: uid(),
+      parent: node
+    }))
+    return node
   }
 
   get parentEl () {

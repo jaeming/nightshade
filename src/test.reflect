@@ -12,15 +12,15 @@
     <p>2 + 2 = {2 + 2}</p>
     <p>Should I stay or should I go? {true ? "go" : "stay"}</p>
   </div>
+  <ul>
+    <li each="{items as item, index}" class="nice">hi to each</li>
+  </ul>
   <br />
   <div large>
     <input type="text" value="{someText}" input="{handleInput}" />
     <p>this is what you entered: {someText}</p>
+    <button click="{addText}">add text to list</button>
     <button click="{clearText}">clear text</button>
-
-    <ul>
-      <li each="{items as item, index}">no. {index}: {item}</li>
-    </ul>
   </div>
   more main here!
 </main>
@@ -34,7 +34,7 @@
     count = 0
     style = 'counter-class'
     someText = 'test'
-    items = ['foobar', 'yolo', 'fomo']
+    items = []
 
     increment () {
       this.count++
@@ -46,6 +46,10 @@
 
     handleInput (e) {
       this.someText = e.target.value
+    }
+
+    addText () {
+      this.items = [...this.items, this.someText]
     }
 
     clearText () {
