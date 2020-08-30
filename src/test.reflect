@@ -12,8 +12,11 @@
     <p>2 + 2 = {2 + 2}</p>
     <p>Should I stay or should I go? {true ? "go" : "stay"}</p>
   </div>
+  <p>items: {msg}</p>
   <ul>
-    <li each="{items as item, index}" class="nice">hi to each</li>
+    <li each="{items as item, index}" class="nice">
+      {index + 1}: hi to {item.name}
+    </li>
   </ul>
   <br />
   <div large>
@@ -49,7 +52,7 @@
     }
 
     addText () {
-      this.items = [...this.items, this.someText]
+      this.items = [...this.items, { name: this.someText }]
     }
 
     clearText () {

@@ -21,7 +21,7 @@ export class Render {
 
   create () {
     this.node.tag === 'text' ? this.createTextNode() : this.createElement()
-    this.append()
+    if (!this.isEach) this.append()
   }
 
   update () {
@@ -116,7 +116,20 @@ export class Render {
   }
 
   evaluate (expression: string) {
-    return new Function(`return ${expression}`)()
+    // const scopes = Object.getOwnPropertyNames(this.component)
+    // console.log(scopes)
+    // also need to give scope to the component somwhow... https://stackoverflow.com/questions/31054910/get-functions-methods-of-a-class
+    if (this.node.eachProps) {
+      const { indexVar, itemVar, prop, index } = this.node.eachProps
+      let func = new Function(
+        `${itemVar}`,
+        `${indexVar}`,
+        `return ${expression}`
+      )
+      return func(this.component[prop][index], index)
+    } else {
+      return new Function(`return ${expression}`)
+    }
   }
 
   bindMatches (str: string) {
@@ -140,33 +153,56 @@ export class Render {
   }
 
   setEach (attr: Attribute) {
-    const val = this.unwrapMatch(attr.value) // for less confusion accept bracewrap or not
-    const [prop, item, index] = val.replace(/\s+/g, '').split(/as|,/)
+    const val = this.unwrapMatch(attr.value) // accept either bracewrap or not
+    const eachArgs = val.replace(/\s+/g, '').split(/as|,/)
+    const [prop, ..._] = eachArgs
+    // create each node iterations
+    const nodes = this.component[prop].reduce((memo, _, index) => {
+      const node = this.cloneEachNode(eachArgs, index)
+      // node.children.forEach(c => {
+      //   if (c.tag === 'text') {
+      //     const matches = this.bindMatches(c.content)
+      //     matches.forEach(match => {
+      //       c.content = c.content.replace(match, `{${prop}[${index}]}`)
+      //     })
+      //     console.log(c.content)
+      //   }
+      // })
 
-    const nodes = this.component[prop].reduce((memo, item, index) => {
-      if (index === 0) return memo // we get this first one for free on original render
-
-      const node = this.cloneCurrentNode()
       memo = [...memo, node, ...node.children]
       return memo
     }, [])
-    this.parentEl.innerHTML = ''
+
+    this.parentEl.innerHTML = '' // TODO: update each efficiently instead of re-rendering the entire list
     new Render(nodes, this.component, null)
-    this.index = this.index + (this.node.children.length - 1)
+
+    this.index = this.index + this.node.children.length // fast-forward to next node after each decendants
 
     this.trackDependency(prop)
   }
 
-  cloneCurrentNode () {
+  get isEach () {
+    return this.node.attributes?.map(n => n.key)?.includes(EACH)
+  }
+
+  cloneEachNode (eachProps, index) {
     const id = uid()
     const attributes = this.node.attributes.filter(n => n.key !== EACH)
     const node = { ...this.node, id, attributes }
-    node.children = node.children.map(child => ({
-      ...child,
-      id: uid(),
-      parent: node
-    }))
+    this.setEachProps(node, eachProps, index)
+    node.children = node.children.map(child => {
+      this.setEachProps(child, eachProps, index)
+      return {
+        ...child,
+        id: uid(),
+        parent: node
+      }
+    })
     return node
+  }
+
+  setEachProps (node, [prop, itemVar, indexVar], index) {
+    node.eachProps = { prop, itemVar, indexVar, index }
   }
 
   get parentEl () {

@@ -277,7 +277,8 @@
         }
         create() {
             this.node.tag === 'text' ? this.createTextNode() : this.createElement();
-            this.append();
+            if (!this.isEach)
+                this.append();
         }
         update() {
             // todo: deal with if's
@@ -362,7 +363,17 @@
                 : this.evaluate(propOrExpression);
         }
         evaluate(expression) {
-            return new Function(`return ${expression}`)();
+            // const scopes = Object.getOwnPropertyNames(this.component)
+            // console.log(scopes)
+            // also need to give scope to the component somwhow... https://stackoverflow.com/questions/31054910/get-functions-methods-of-a-class
+            if (this.node.eachProps) {
+                const { indexVar, itemVar, prop, index } = this.node.eachProps;
+                let func = new Function(`${itemVar}`, `${indexVar}`, `return ${expression}`);
+                return func(this.component[prop][index], index);
+            }
+            else {
+                return new Function(`return ${expression}`);
+            }
         }
         bindMatches(str) {
             // returns array of matches including the braces
@@ -381,30 +392,49 @@
             this.el.setAttribute('data-ref', this.node.id);
         }
         setEach(attr) {
-            const val = this.unwrapMatch(attr.value); // for less confusion accept bracewrap or not
-            const [prop, item, index] = val.replace(/\s+/g, '').split(/as|,/);
-            const nodes = this.component[prop].reduce((memo, item, index) => {
-                if (index === 0)
-                    return memo; // we get this first one for free on original render
-                const node = this.cloneCurrentNode();
+            const val = this.unwrapMatch(attr.value); // accept either bracewrap or not
+            const eachArgs = val.replace(/\s+/g, '').split(/as|,/);
+            const [prop, ..._] = eachArgs;
+            // create each node iterations
+            const nodes = this.component[prop].reduce((memo, _, index) => {
+                const node = this.cloneEachNode(eachArgs, index);
+                // node.children.forEach(c => {
+                //   if (c.tag === 'text') {
+                //     const matches = this.bindMatches(c.content)
+                //     matches.forEach(match => {
+                //       c.content = c.content.replace(match, `{${prop}[${index}]}`)
+                //     })
+                //     console.log(c.content)
+                //   }
+                // })
                 memo = [...memo, node, ...node.children];
                 return memo;
             }, []);
-            this.parentEl.innerHTML = '';
+            this.parentEl.innerHTML = ''; // TODO: update each efficiently instead of re-rendering the entire list
             new Render(nodes, this.component, null);
-            this.index = this.index + (this.node.children.length - 1);
+            this.index = this.index + this.node.children.length; // fast-forward to next node after each decendants
             this.trackDependency(prop);
         }
-        cloneCurrentNode() {
+        get isEach() {
+            return this.node.attributes?.map(n => n.key)?.includes(EACH);
+        }
+        cloneEachNode(eachProps, index) {
             const id = uid();
             const attributes = this.node.attributes.filter(n => n.key !== EACH);
             const node = { ...this.node, id, attributes };
-            node.children = node.children.map(child => ({
-                ...child,
-                id: uid(),
-                parent: node
-            }));
+            this.setEachProps(node, eachProps, index);
+            node.children = node.children.map(child => {
+                this.setEachProps(child, eachProps, index);
+                return {
+                    ...child,
+                    id: uid(),
+                    parent: node
+                };
+            });
             return node;
+        }
+        setEachProps(node, [prop, itemVar, indexVar], index) {
+            node.eachProps = { prop, itemVar, indexVar, index };
         }
         get parentEl() {
             return document.querySelector(`[data-ref="${this.node.parent.id}"]`);
@@ -448,7 +478,7 @@
     }
 
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"nice\">hi to each</li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"nice\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
         question = 'How are you tonight?'
         count = 0
@@ -469,7 +499,7 @@
         }
 
         addText () {
-          this.items = [...this.items, this.someText];
+          this.items = [...this.items, { name: this.someText }];
         }
 
         clearText () {
