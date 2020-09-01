@@ -3,6 +3,11 @@
   <p id="main-text" class="foo bar moar" small data-role="test">
     a paragraph...
   </p>
+  <hr />
+  <p>this is a prop: {myProp}</p>
+  <p>we can mutate it locally but that will not sync upwards.</p>
+  <input type="text" value="{myProp}" input="{mutateProp}" />
+  <hr />
   <h2 class="{style}">the count is {count}</h2>
   <button click="{increment}">increment count</button>
   <button click="{decrement}">decrement count</button>
@@ -14,7 +19,7 @@
   </div>
   <p>items: {msg}</p>
   <ul>
-    <li each="{items as item, index}" class="nice">
+    <li each="{items as item, index}" class="{style}">
       {index + 1}: hi to {item.name}
     </li>
   </ul>
@@ -39,6 +44,10 @@
     someText = 'test'
     items = []
 
+    constructor ({ myProp }) {
+      this.myProp = myProp
+    }
+
     increment () {
       this.count++
     }
@@ -49,6 +58,10 @@
 
     handleInput (e) {
       this.someText = e.target.value
+    }
+
+    mutateProp (e) {
+      this.myProp = e.target.value
     }
 
     addText () {

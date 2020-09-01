@@ -71,6 +71,8 @@ export class Render {
   }
 
   setAttrBinding (attr, bindings) {
+    if (!this.el) return // because we are re-building "each" nodes instead of updating, we have to avoid this
+
     const prop = this.unwrapMatch(bindings[0])
     this.trackDependency(prop)
     this.el.setAttribute(attr.key, this.component[prop])
@@ -116,9 +118,6 @@ export class Render {
   }
 
   evaluate (expression: string) {
-    // const scopes = Object.getOwnPropertyNames(this.component)
-    // console.log(scopes)
-    // also need to give scope to the component somwhow... https://stackoverflow.com/questions/31054910/get-functions-methods-of-a-class
     if (this.node.eachProps) {
       const { indexVar, itemVar, prop, index } = this.node.eachProps
       let func = new Function(
@@ -159,25 +158,17 @@ export class Render {
     // create each node iterations
     const nodes = this.component[prop].reduce((memo, _, index) => {
       const node = this.cloneEachNode(eachArgs, index)
-      // node.children.forEach(c => {
-      //   if (c.tag === 'text') {
-      //     const matches = this.bindMatches(c.content)
-      //     matches.forEach(match => {
-      //       c.content = c.content.replace(match, `{${prop}[${index}]}`)
-      //     })
-      //     console.log(c.content)
-      //   }
-      // })
-
       memo = [...memo, node, ...node.children]
       return memo
     }, [])
 
-    this.parentEl.innerHTML = '' // TODO: update each efficiently instead of re-rendering the entire list
+    // TODO: update each efficiently instead of re-rendering the entire list
+    this.parentEl.innerHTML = '' // hack to flush each nodes until we have proper updating
+    // When we 'update' this is completly rebuilding the 'each' nodes and children instead of updating the existing ones.
+    // Will need to do something more efficient later
     new Render(nodes, this.component, null)
 
     this.index = this.index + this.node.children.length // fast-forward to next node after each decendants
-
     this.trackDependency(prop)
   }
 

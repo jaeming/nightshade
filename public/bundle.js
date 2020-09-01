@@ -322,6 +322,8 @@
             });
         }
         setAttrBinding(attr, bindings) {
+            if (!this.el)
+                return; // because we are re-building "each" nodes instead of updating, we have to avoid this
             const prop = this.unwrapMatch(bindings[0]);
             this.trackDependency(prop);
             this.el.setAttribute(attr.key, this.component[prop]);
@@ -363,9 +365,6 @@
                 : this.evaluate(propOrExpression);
         }
         evaluate(expression) {
-            // const scopes = Object.getOwnPropertyNames(this.component)
-            // console.log(scopes)
-            // also need to give scope to the component somwhow... https://stackoverflow.com/questions/31054910/get-functions-methods-of-a-class
             if (this.node.eachProps) {
                 const { indexVar, itemVar, prop, index } = this.node.eachProps;
                 let func = new Function(`${itemVar}`, `${indexVar}`, `return ${expression}`);
@@ -398,19 +397,13 @@
             // create each node iterations
             const nodes = this.component[prop].reduce((memo, _, index) => {
                 const node = this.cloneEachNode(eachArgs, index);
-                // node.children.forEach(c => {
-                //   if (c.tag === 'text') {
-                //     const matches = this.bindMatches(c.content)
-                //     matches.forEach(match => {
-                //       c.content = c.content.replace(match, `{${prop}[${index}]}`)
-                //     })
-                //     console.log(c.content)
-                //   }
-                // })
                 memo = [...memo, node, ...node.children];
                 return memo;
             }, []);
-            this.parentEl.innerHTML = ''; // TODO: update each efficiently instead of re-rendering the entire list
+            // TODO: update each efficiently instead of re-rendering the entire list
+            this.parentEl.innerHTML = ''; // hack to flush each nodes until we have proper updating
+            // When we 'update' this is completly rebuilding the 'each' nodes and children instead of updating the existing ones.
+            // Will need to do something more efficient later
             new Render(nodes, this.component, null);
             this.index = this.index + this.node.children.length; // fast-forward to next node after each decendants
             this.trackDependency(prop);
@@ -450,10 +443,12 @@
             this.nodes = [];
             this.component = null;
             this.proxy = null;
+            this.props = {};
         }
-        mount(Component, element, options = {}) {
+        mount(Component, element, props = {}) {
             this.root = document.querySelector(element);
-            this.component = new Component();
+            this.props = props;
+            this.component = new Component(props);
             this.nodes = new TemplateParse(this.component.template).nodes;
             this.observe();
             new Render(this.nodes, this.proxy, this.root);
@@ -478,13 +473,17 @@
     }
 
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"nice\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
         msg = 'Hello World!'
         question = 'How are you tonight?'
         count = 0
         style = 'counter-class'
         someText = 'test'
         items = []
+
+        constructor ({ myProp }) {
+          this.myProp = myProp;
+        }
 
         increment () {
           this.count++;
@@ -498,6 +497,10 @@
           this.someText = e.target.value;
         }
 
+        mutateProp (e) {
+          this.myProp = e.target.value;
+        }
+
         addText () {
           this.items = [...this.items, { name: this.someText }];
         }
@@ -509,7 +512,9 @@
 
     const app = new Reflection();
 
-    app.mount(Foo, '#app');
+    let myProp = 'Test Prop';
+
+    app.mount(Foo, '#app', { myProp });
 
 }());
 //# sourceMappingURL=bundle.js.map

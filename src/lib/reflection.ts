@@ -6,10 +6,12 @@ export default class Reflection {
   nodes = []
   component = null
   proxy = null
+  props = {}
 
-  mount (Component, element, options = {}) {
+  mount (Component, element, props = {}) {
     this.root = document.querySelector(element)
-    this.component = new Component()
+    this.props = props
+    this.component = new Component(props)
     this.nodes = new TemplateParse(this.component.template).nodes
     this.observe()
     new Render(this.nodes, this.proxy, this.root)
