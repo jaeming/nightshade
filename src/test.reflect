@@ -8,6 +8,10 @@
   <p>we can mutate it locally but that will not sync upwards.</p>
   <input type="text" value="{myProp}" input="{mutateProp}" />
   <hr />
+  <div>
+    some child...
+    <Child someProp="Foobar"></Child>
+  </div>
   <h2 class="{style}">the count is {count}</h2>
   <button click="{increment}">increment count</button>
   <button click="{decrement}">decrement count</button>
@@ -34,9 +38,13 @@
 </main>
 
 <script>
-  const foo = 'bar'
+  import Child from './child.reflect'
 
   export default class Foo {
+    components = {
+      Child
+    }
+
     msg = 'Hello World!'
     question = 'How are you tonight?'
     count = 0

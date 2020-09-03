@@ -291,12 +291,18 @@
             }
         }
         createElement() {
+            if (this.components.includes(this.node.tag))
+                return this.createComponent();
             this.el = document.createElement(this.node.tag);
             this.setRef();
             this.setAttributes();
         }
         createTextNode() {
             this.el = document.createTextNode(this.interpolatedContent());
+        }
+        createComponent() {
+            const comp = new Reflection();
+            comp.mount(this.component.components[this.node.tag], `[data-ref="${this.node.parent.id}"]`);
         }
         updateTextNode() {
             for (let n of this.parentEl.childNodes) {
@@ -435,6 +441,10 @@
         get prevNode() {
             return this.nodes[this.index - 1];
         }
+        get components() {
+            const obj = this.component?.components || {};
+            return Object.keys(obj);
+        }
     }
 
     class Reflection {
@@ -472,8 +482,17 @@
         }
     }
 
+    class Child {
+      template = "<div>\n  <p>I am a child component: {msg}</p>\n</div>\n\n\n"
+        msg = 'CHILD HERE'
+      }
+
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child someProp=\"Foobar\"></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
+        components = {
+          Child
+        }
+
         msg = 'Hello World!'
         question = 'How are you tonight?'
         count = 0

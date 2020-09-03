@@ -1,5 +1,6 @@
 import { HANDLERS, EACH, Options, Attribute } from './types'
 import { uid } from './utils'
+import Reflection from '../lib/reflection'
 
 export class Render {
   el = null
@@ -35,6 +36,8 @@ export class Render {
   }
 
   createElement () {
+    if (this.components.includes(this.node.tag)) return this.createComponent()
+
     this.el = document.createElement(this.node.tag)
     this.setRef()
     this.setAttributes()
@@ -42,6 +45,14 @@ export class Render {
 
   createTextNode () {
     this.el = document.createTextNode(this.interpolatedContent())
+  }
+
+  createComponent () {
+    const comp = new Reflection()
+    comp.mount(
+      this.component.components[this.node.tag],
+      `[data-ref="${this.node.parent.id}"]`
+    )
   }
 
   updateTextNode () {
@@ -202,5 +213,10 @@ export class Render {
 
   get prevNode () {
     return this.nodes[this.index - 1]
+  }
+
+  get components () {
+    const obj = this.component?.components || {}
+    return Object.keys(obj)
   }
 }
