@@ -14,7 +14,7 @@ export default class Reflection {
     this.component = new Component(props)
     this.nodes = new TemplateParse(this.component.template).nodes
     this.observe()
-    new Render(this.nodes, this.proxy, this.root)
+    new Render(Reflection, this.nodes, this.proxy, this.root)
   }
 
   observe () {
@@ -31,7 +31,7 @@ export default class Reflection {
   update (prop, receiver) {
     console.log('update', String(prop), receiver[prop])
     const nodes = this.nodes.filter(n => n.tracks?.has(prop))
-    new Render(nodes, this.proxy, this.root, { update: true, prop })
+    new Render(Reflection, nodes, this.proxy, this.root, { update: true, prop })
     // find all elements that track the prop as a dependency and update them
     // in the case of "if" we need to create a new elements, or remove them
   }

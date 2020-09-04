@@ -1,6 +1,6 @@
 import { HANDLERS, EACH, Options, Attribute } from './types'
 import { uid } from './utils'
-import Reflection from '../lib/reflection'
+// import Reflection from '../lib/reflection'
 
 export class Render {
   el = null
@@ -8,6 +8,7 @@ export class Render {
   index = 0
 
   constructor (
+    public Reflection,
     public nodes,
     public component,
     public root,
@@ -23,6 +24,7 @@ export class Render {
   create () {
     this.node.tag === 'text' ? this.createTextNode() : this.createElement()
     if (!this.isEach) this.append()
+    if (this.isComponent) return this.createComponent()
   }
 
   update () {
@@ -36,8 +38,6 @@ export class Render {
   }
 
   createElement () {
-    if (this.components.includes(this.node.tag)) return this.createComponent()
-
     this.el = document.createElement(this.node.tag)
     this.setRef()
     this.setAttributes()
@@ -48,10 +48,11 @@ export class Render {
   }
 
   createComponent () {
-    const comp = new Reflection()
+    const comp = new this.Reflection()
     comp.mount(
       this.component.components[this.node.tag],
-      `[data-ref="${this.node.parent.id}"]`
+      `[data-ref="${this.node.id}"]`,
+      this.node.props
     )
   }
 
@@ -78,7 +79,15 @@ export class Render {
       const bindings = this.bindMatches(attr.value)
       if (bindings) return this.setAttrBinding(attr, bindings)
       this.el?.setAttribute(attr.key, attr.value)
+      if (this.isComponent) this.setProp(attr)
     })
+  }
+
+  setProp ({ key, value }) {
+    const prop = { [key]: value }
+    const props = this.node.props
+    const parent = this.component
+    this.node.props = props ? { ...props, ...prop } : { ...prop, parent }
   }
 
   setAttrBinding (attr, bindings) {
@@ -87,6 +96,8 @@ export class Render {
     const prop = this.unwrapMatch(bindings[0])
     this.trackDependency(prop)
     this.el.setAttribute(attr.key, this.component[prop])
+    if (this.isComponent)
+      this.setProp({ key: attr.key, value: this.component[prop] })
   }
 
   setHandler (attr: Attribute) {
@@ -94,6 +105,7 @@ export class Render {
 
     const [handlerType, handler] = this.deriveHandler(attr)
     this.el.addEventListener(handlerType, handler, false)
+    if (this.isComponent) this.setProp({ key: attr.key, value: handler })
   }
 
   deriveHandler ({ key, value }) {
@@ -177,7 +189,7 @@ export class Render {
     this.parentEl.innerHTML = '' // hack to flush each nodes until we have proper updating
     // When we 'update' this is completly rebuilding the 'each' nodes and children instead of updating the existing ones.
     // Will need to do something more efficient later
-    new Render(nodes, this.component, null)
+    new Render(this.Reflection, nodes, this.component, null)
 
     this.index = this.index + this.node.children.length // fast-forward to next node after each decendants
     this.trackDependency(prop)
@@ -218,5 +230,9 @@ export class Render {
   get components () {
     const obj = this.component?.components || {}
     return Object.keys(obj)
+  }
+
+  get isComponent () {
+    return this.components.includes(this.node.tag)
   }
 }

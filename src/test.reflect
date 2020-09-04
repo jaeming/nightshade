@@ -10,7 +10,7 @@
   <hr />
   <div>
     some child...
-    <Child someProp="Foobar"></Child>
+    <Child someProp="Foobar" hello="{msg}" increment="{increment}"></Child>
   </div>
   <h2 class="{style}">the count is {count}</h2>
   <button click="{increment}">increment count</button>

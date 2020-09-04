@@ -260,8 +260,10 @@
         }
     }
 
+    // import Reflection from '../lib/reflection'
     class Render {
-        constructor(nodes, component, root, options = {}) {
+        constructor(Reflection, nodes, component, root, options = {}) {
+            this.Reflection = Reflection;
             this.nodes = nodes;
             this.component = component;
             this.root = root;
@@ -279,6 +281,8 @@
             this.node.tag === 'text' ? this.createTextNode() : this.createElement();
             if (!this.isEach)
                 this.append();
+            if (this.isComponent)
+                return this.createComponent();
         }
         update() {
             // todo: deal with if's
@@ -291,8 +295,6 @@
             }
         }
         createElement() {
-            if (this.components.includes(this.node.tag))
-                return this.createComponent();
             this.el = document.createElement(this.node.tag);
             this.setRef();
             this.setAttributes();
@@ -301,8 +303,8 @@
             this.el = document.createTextNode(this.interpolatedContent());
         }
         createComponent() {
-            const comp = new Reflection();
-            comp.mount(this.component.components[this.node.tag], `[data-ref="${this.node.parent.id}"]`);
+            const comp = new this.Reflection();
+            comp.mount(this.component.components[this.node.tag], `[data-ref="${this.node.id}"]`, this.node.props);
         }
         updateTextNode() {
             for (let n of this.parentEl.childNodes) {
@@ -325,7 +327,15 @@
                 if (bindings)
                     return this.setAttrBinding(attr, bindings);
                 this.el?.setAttribute(attr.key, attr.value);
+                if (this.isComponent)
+                    this.setProp(attr);
             });
+        }
+        setProp({ key, value }) {
+            const prop = { [key]: value };
+            const props = this.node.props;
+            const parent = this.component;
+            this.node.props = props ? { ...props, ...prop } : { ...prop, parent };
         }
         setAttrBinding(attr, bindings) {
             if (!this.el)
@@ -333,12 +343,16 @@
             const prop = this.unwrapMatch(bindings[0]);
             this.trackDependency(prop);
             this.el.setAttribute(attr.key, this.component[prop]);
+            if (this.isComponent)
+                this.setProp({ key: attr.key, value: this.component[prop] });
         }
         setHandler(attr) {
             if (attr.key === EACH)
                 return this.setEach(attr);
             const [handlerType, handler] = this.deriveHandler(attr);
             this.el.addEventListener(handlerType, handler, false);
+            if (this.isComponent)
+                this.setProp({ key: attr.key, value: handler });
         }
         deriveHandler({ key, value }) {
             const val = this.unwrapMatch(value);
@@ -410,7 +424,7 @@
             this.parentEl.innerHTML = ''; // hack to flush each nodes until we have proper updating
             // When we 'update' this is completly rebuilding the 'each' nodes and children instead of updating the existing ones.
             // Will need to do something more efficient later
-            new Render(nodes, this.component, null);
+            new Render(this.Reflection, nodes, this.component, null);
             this.index = this.index + this.node.children.length; // fast-forward to next node after each decendants
             this.trackDependency(prop);
         }
@@ -445,6 +459,9 @@
             const obj = this.component?.components || {};
             return Object.keys(obj);
         }
+        get isComponent() {
+            return this.components.includes(this.node.tag);
+        }
     }
 
     class Reflection {
@@ -461,7 +478,7 @@
             this.component = new Component(props);
             this.nodes = new TemplateParse(this.component.template).nodes;
             this.observe();
-            new Render(this.nodes, this.proxy, this.root);
+            new Render(Reflection, this.nodes, this.proxy, this.root);
         }
         observe() {
             const update = this.update.bind(this);
@@ -476,19 +493,37 @@
         update(prop, receiver) {
             console.log('update', String(prop), receiver[prop]);
             const nodes = this.nodes.filter(n => n.tracks?.has(prop));
-            new Render(nodes, this.proxy, this.root, { update: true, prop });
+            new Render(Reflection, nodes, this.proxy, this.root, { update: true, prop });
             // find all elements that track the prop as a dependency and update them
             // in the case of "if" we need to create a new elements, or remove them
         }
     }
 
     class Child {
-      template = "<div>\n  <p>I am a child component: {msg}</p>\n</div>\n\n\n"
+      template = "<div>\n  <p>I am a child component: {msg}</p>\n  <p>a prop: {someProp}</p>\n  <small>another prop: {hello}</small>\n</div>\n\n\n"
         msg = 'CHILD HERE'
+
+        constructor ({ parent, someProp, hello, increment }) {
+          Object.assign(this, { someProp, hello });
+
+          this.parent = parent; // should you do this?!
+
+          let { count } = parent; // surely not referenced to parent
+          this.count = count;
+
+          this.increment = increment.bind(parent); // bind to parent in an explicit way
+
+          setInterval(() => {
+            this.count++; // will not mutate parent value
+            console.log(this.count); // but will mutate locally
+            this.parent.count++; // bound to parent but maybe an antipattern? you decide!
+            this.increment(); // oh, this method looks safe
+          }, 1000);
+        }
       }
 
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child someProp=\"Foobar\"></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child someProp=\"Foobar\" hello=\"{msg}\" increment=\"{increment}\"></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
         components = {
           Child
         }
