@@ -476,6 +476,7 @@
             this.root = document.querySelector(element);
             this.props = props;
             this.component = new Component(props);
+            this.setProps(props);
             this.nodes = new TemplateParse(this.component.template).nodes;
             this.observe();
             new Render(Reflection, this.nodes, this.proxy, this.root);
@@ -497,28 +498,32 @@
             // find all elements that track the prop as a dependency and update them
             // in the case of "if" we need to create a new elements, or remove them
         }
+        setProps(props) {
+            Object.entries(props).forEach(([k, v]) => {
+                if (this.component.hasOwnProperty(k)) {
+                    if (typeof v === 'function') {
+                        // bind to parent context
+                        this.component[k] = v.bind(props.parent);
+                    }
+                    else {
+                        this.component[k] = v;
+                    }
+                }
+            });
+        }
     }
 
     class Child {
-      template = "<div>\n  <p>I am a child component: {msg}</p>\n  <p>a prop: {someProp}</p>\n  <small>another prop: {hello}</small>\n</div>\n\n\n"
+      template = "<div>\n  <p>I am a child component: {msg}</p>\n  <p>a prop: {someProp}</p>\n  <small>another prop: *{hello}*</small>\n  <button click=\"{increment}\">increment parent's count</button>\n</div>\n\n\n"
         msg = 'CHILD HERE'
 
-        constructor ({ parent, someProp, hello, increment }) {
-          Object.assign(this, { someProp, hello });
+        // props can declared this way too
+        hello
+        increment
 
-          this.parent = parent; // should you do this?!
-
-          let { count } = parent; // surely not referenced to parent
-          this.count = count;
-
-          this.increment = increment.bind(parent); // bind to parent in an explicit way
-
-          setInterval(() => {
-            this.count++; // will not mutate parent value
-            console.log(this.count); // but will mutate locally
-            this.parent.count++; // bound to parent but maybe an antipattern? you decide!
-            this.increment(); // oh, this method looks safe
-          }, 1000);
+        // or they can be set in the constructor
+        constructor ({ someProp }) {
+          Object.assign(this, { someProp });
         }
       }
 
@@ -540,6 +545,7 @@
         }
 
         increment () {
+          console.log(this);
           this.count++;
         }
 

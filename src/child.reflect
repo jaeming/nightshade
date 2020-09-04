@@ -1,29 +1,21 @@
 <div>
   <p>I am a child component: {msg}</p>
   <p>a prop: {someProp}</p>
-  <small>another prop: {hello}</small>
+  <small>another prop: *{hello}*</small>
+  <button click="{increment}">increment parent's count</button>
 </div>
 
 <script>
   export default class Child {
     msg = 'CHILD HERE'
 
-    constructor ({ parent, someProp, hello, increment }) {
-      Object.assign(this, { someProp, hello })
+    // props can declared this way too
+    hello
+    increment
 
-      this.parent = parent // should you do this?!
-
-      let { count } = parent // surely not referenced to parent
-      this.count = count
-
-      this.increment = increment.bind(parent) // bind to parent in an explicit way
-
-      setInterval(() => {
-        this.count++ // will not mutate parent value
-        console.log(this.count) // but will mutate locally
-        this.parent.count++ // bound to parent but maybe an antipattern? you decide!
-        this.increment() // oh, this method looks safe
-      }, 1000)
+    // or they can be set in the constructor
+    constructor ({ someProp }) {
+      Object.assign(this, { someProp })
     }
   }
 </script>

@@ -57,6 +57,7 @@
     }
 
     increment () {
+      console.log(this)
       this.count++
     }
 
