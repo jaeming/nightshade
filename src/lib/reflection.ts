@@ -6,13 +6,10 @@ export default class Reflection {
   nodes = []
   component = null
   proxy = null
-  props = {}
 
   mount (Component, element, props = {}) {
     this.root = document.querySelector(element)
-    this.props = props
-    this.component = new Component(props)
-    this.setProps(props)
+    this.createComponent(Component, props)
     this.nodes = new TemplateParse(this.component.template).nodes
     this.observe()
     new Render(Reflection, this.nodes, this.proxy, this.root)
@@ -37,16 +34,15 @@ export default class Reflection {
     // in the case of "if" we need to create a new elements, or remove them
   }
 
-  setProps (props) {
+  createComponent (Component, props) {
+    this.component = new Component(props)
+
     Object.entries(props).forEach(([k, v]) => {
-      if (this.component.hasOwnProperty(k)) {
-        if (typeof v === 'function') {
-          // bind to parent context
-          this.component[k] = (v as Function).bind(props.parent)
-        } else {
-          this.component[k] = v
-        }
-      }
+      // add props if not undefined
+      if (typeof v === 'function') v = (v as Function).bind(props.parent)
+      if (typeof v !== 'undefined') this.component[k] = v
     })
+
+    // listen to parent for prop changes
   }
 }

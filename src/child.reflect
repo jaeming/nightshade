@@ -1,21 +1,42 @@
 <div>
-  <p>I am a child component: {msg}</p>
-  <p>a prop: {someProp}</p>
-  <small>another prop: *{hello}*</small>
+  <p>I am a child component now:</p>
+  <p>a prop: {foo}</p>
+  <p>prop count: {count}, {num}</p>
+  <small>another prop: *{hi}*</small>
+  <button click="{increase}">increase num</button>
   <button click="{increment}">increment parent's count</button>
 </div>
 
 <script>
   export default class Child {
-    msg = 'CHILD HERE'
+    count = 0
+    num = 5
+    foo = 'backup' // default value for prop if undefined
 
-    // props can declared this way too
-    hello
-    increment
+    // increment
+    // ^ note you don't have to declare the prop if you don't need it for type-checking.
 
-    // or they can be set in the constructor
-    constructor ({ someProp }) {
-      Object.assign(this, { someProp })
+    constructor () {
+      // note constructor is not reactive
+      // Will likely have a dedicated lifecycle hook for mounted anyway
+      this.greet()
+    }
+
+    greet () {
+      this.count = 2
+      this.hi = 'bye'
+      console.log(
+        'prop is available on instance by default',
+        this.hi,
+        this.count
+      )
+      this.num += 100
+      this.increase()
+    }
+
+    increase () {
+      this.num += 1
+      this.count += 5
     }
   }
 </script>

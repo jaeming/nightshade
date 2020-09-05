@@ -1,6 +1,5 @@
 import { HANDLERS, EACH, Options, Attribute } from './types'
 import { uid } from './utils'
-// import Reflection from '../lib/reflection'
 
 export class Render {
   el = null
@@ -35,6 +34,7 @@ export class Render {
     } else {
       this.setAttributes()
     }
+    if (this.isComponent) this.updateComponent()
   }
 
   createElement () {
@@ -48,12 +48,14 @@ export class Render {
   }
 
   createComponent () {
-    const comp = new this.Reflection()
-    comp.mount(
-      this.component.components[this.node.tag],
-      `[data-ref="${this.node.id}"]`,
-      this.node.props
-    )
+    const Component = this.component.components[this.node.tag]
+    const instance = new this.Reflection()
+    instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props)
+    this.node.component = instance.proxy
+  }
+
+  updateComponent () {
+    this.node.component[this.options.prop] = this.component[this.options.prop]
   }
 
   updateTextNode () {
@@ -135,7 +137,7 @@ export class Render {
   }
 
   deriveBound (propOrExpression: string) {
-    return this.component.hasOwnProperty(propOrExpression)
+    return propOrExpression in this.component
       ? this.component[propOrExpression]
       : this.evaluate(propOrExpression)
   }

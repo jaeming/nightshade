@@ -260,7 +260,6 @@
         }
     }
 
-    // import Reflection from '../lib/reflection'
     class Render {
         constructor(Reflection, nodes, component, root, options = {}) {
             this.Reflection = Reflection;
@@ -293,6 +292,8 @@
             else {
                 this.setAttributes();
             }
+            if (this.isComponent)
+                this.updateComponent();
         }
         createElement() {
             this.el = document.createElement(this.node.tag);
@@ -303,8 +304,13 @@
             this.el = document.createTextNode(this.interpolatedContent());
         }
         createComponent() {
-            const comp = new this.Reflection();
-            comp.mount(this.component.components[this.node.tag], `[data-ref="${this.node.id}"]`, this.node.props);
+            const Component = this.component.components[this.node.tag];
+            const instance = new this.Reflection();
+            instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props);
+            this.node.component = instance.proxy;
+        }
+        updateComponent() {
+            this.node.component[this.options.prop] = this.component[this.options.prop];
         }
         updateTextNode() {
             for (let n of this.parentEl.childNodes) {
@@ -380,7 +386,7 @@
             return content;
         }
         deriveBound(propOrExpression) {
-            return this.component.hasOwnProperty(propOrExpression)
+            return propOrExpression in this.component
                 ? this.component[propOrExpression]
                 : this.evaluate(propOrExpression);
         }
@@ -470,13 +476,10 @@
             this.nodes = [];
             this.component = null;
             this.proxy = null;
-            this.props = {};
         }
         mount(Component, element, props = {}) {
             this.root = document.querySelector(element);
-            this.props = props;
-            this.component = new Component(props);
-            this.setProps(props);
+            this.createComponent(Component, props);
             this.nodes = new TemplateParse(this.component.template).nodes;
             this.observe();
             new Render(Reflection, this.nodes, this.proxy, this.root);
@@ -498,54 +501,66 @@
             // find all elements that track the prop as a dependency and update them
             // in the case of "if" we need to create a new elements, or remove them
         }
-        setProps(props) {
+        createComponent(Component, props) {
+            this.component = new Component(props);
             Object.entries(props).forEach(([k, v]) => {
-                if (this.component.hasOwnProperty(k)) {
-                    if (typeof v === 'function') {
-                        // bind to parent context
-                        this.component[k] = v.bind(props.parent);
-                    }
-                    else {
-                        this.component[k] = v;
-                    }
-                }
+                // add props if not undefined
+                if (typeof v === 'function')
+                    v = v.bind(props.parent);
+                if (typeof v !== 'undefined')
+                    this.component[k] = v;
             });
+            // listen to parent for prop changes
         }
     }
 
     class Child {
-      template = "<div>\n  <p>I am a child component: {msg}</p>\n  <p>a prop: {someProp}</p>\n  <small>another prop: *{hello}*</small>\n  <button click=\"{increment}\">increment parent's count</button>\n</div>\n\n\n"
-        msg = 'CHILD HERE'
+      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <button click=\"{increment}\">increment parent's count</button>\n</div>\n\n\n"
+        count = 0
+        num = 5
+        foo = 'backup' // default value for prop if undefined
 
-        // props can declared this way too
-        hello
-        increment
+        // increment
+        // ^ note you don't have to declare the prop if you don't need it for type-checking.
 
-        // or they can be set in the constructor
-        constructor ({ someProp }) {
-          Object.assign(this, { someProp });
+        constructor () {
+          // note constructor is not reactive
+          // Will likely have a dedicated lifecycle hook for mounted anyway
+          this.greet();
+        }
+
+        greet () {
+          this.count = 2;
+          this.hi = 'bye';
+          console.log(
+            'prop is available on instance by default',
+            this.hi,
+            this.count
+          );
+          this.num += 100;
+          this.increase();
+        }
+
+        increase () {
+          this.num += 1;
+          this.count += 5;
         }
       }
 
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child someProp=\"Foobar\" hello=\"{msg}\" increment=\"{increment}\"></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child hi=\"{msg}\" increment=\"{increment}\" count=\"{count}\"></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
         components = {
           Child
         }
-
+        foo = 'oppppSSS!'
         msg = 'Hello World!'
         question = 'How are you tonight?'
-        count = 0
+        count = 1
         style = 'counter-class'
         someText = 'test'
         items = []
 
-        constructor ({ myProp }) {
-          this.myProp = myProp;
-        }
-
         increment () {
-          console.log(this);
           this.count++;
         }
 

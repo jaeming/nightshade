@@ -10,7 +10,7 @@
   <hr />
   <div>
     some child...
-    <Child someProp="Foobar" hello="{msg}" increment="{increment}"></Child>
+    <Child hi="{msg}" increment="{increment}" count="{count}"></Child>
   </div>
   <h2 class="{style}">the count is {count}</h2>
   <button click="{increment}">increment count</button>
@@ -44,20 +44,15 @@
     components = {
       Child
     }
-
+    foo = 'oppppSSS!'
     msg = 'Hello World!'
     question = 'How are you tonight?'
-    count = 0
+    count = 1
     style = 'counter-class'
     someText = 'test'
     items = []
 
-    constructor ({ myProp }) {
-      this.myProp = myProp
-    }
-
     increment () {
-      console.log(this)
       this.count++
     }
 
