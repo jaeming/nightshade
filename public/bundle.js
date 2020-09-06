@@ -107,7 +107,7 @@
             const becomesComment = this.buffer === '!' && this.template[this.index - 1] === Bracket.Open;
             if (becomesComment)
                 return this.setState(TagState.Comment);
-            if (this.buffer === ' ') {
+            if ([' ', '\n'].includes(this.buffer)) {
                 this.setState(TagState.Attributes);
                 this.setAttributes();
             }
@@ -131,7 +131,7 @@
             let { statement, key, value } = this.currentAttribute;
             let finishAttr = false;
             statement += this.buffer;
-            if (statement === ' ')
+            if ([' ', '\n'].includes(statement))
                 return; // ignore space seperator
             if (this.buffer === '=')
                 return this.updateCurrentAttr({ statement }); // update and move on to key
@@ -206,9 +206,13 @@
                 this.setSelfClosing();
                 this.currentNode = this.findOpenParent(this.currentNode);
             }
-            if (this.isComment && this.template[this.index - 1] === '-') {
-                this.setState(TagState.Closed);
-                this.currentNode = this.findOpenParent(this.currentNode);
+            if (this.isComment) {
+                const closingComment = this.template[this.index - 1] === '-' &&
+                    this.template[this.index - 2] === '-';
+                if (closingComment) {
+                    this.setState(TagState.Closed);
+                    this.currentNode = this.findOpenParent(this.currentNode);
+                }
             }
             if (this.isClosing) {
                 this.setState(TagState.Closed);
@@ -529,7 +533,7 @@
     }
 
     class Child {
-      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <p>good bye from child now...</p>\n</div>\n\n\n"
+      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> <hr /> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <p>good bye from child now...</p>\n</div>\n\n\n"
         count = 0
         num = 5
         foo = 'backup' // default value for prop if undefined
@@ -562,7 +566,7 @@
       }
 
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child hi=\"{msg}\" increment=\"{increment}\" count=\"{count}\"></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child\n      hi=\"{msg}\"\n      increment=\"{increment}\"\n      count=\"{count}\"\n      foobar=\"foobar\"\n    ></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
         components = {
           Child
         }

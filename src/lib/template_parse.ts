@@ -65,7 +65,7 @@ export class TemplateParse {
       this.buffer === '!' && this.template[this.index - 1] === Bracket.Open
     if (becomesComment) return this.setState(TagState.Comment)
 
-    if (this.buffer === ' ') {
+    if ([' ', '\n'].includes(this.buffer)) {
       this.setState(TagState.Attributes)
       this.setAttributes()
     } else {
@@ -90,7 +90,7 @@ export class TemplateParse {
     let finishAttr = false
     statement += this.buffer
 
-    if (statement === ' ') return // ignore space seperator
+    if ([' ', '\n'].includes(statement)) return // ignore space seperator
     if (this.buffer === '=') return this.updateCurrentAttr({ statement }) // update and move on to key
 
     const setValue = () => {

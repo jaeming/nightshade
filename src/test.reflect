@@ -10,7 +10,12 @@
   <hr />
   <div>
     some child...
-    <Child hi="{msg}" increment="{increment}" count="{count}"></Child>
+    <Child
+      hi="{msg}"
+      increment="{increment}"
+      count="{count}"
+      foobar="foobar"
+    ></Child>
   </div>
   <h2 class="{style}">the count is {count}</h2>
   <button click="{increment}">increment count</button>
