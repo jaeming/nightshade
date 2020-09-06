@@ -31,7 +31,8 @@ export enum TagState {
   Attributes = 'Attributes',
   Opened = 'Opened',
   Closing = 'Closing',
-  Closed = 'Closed'
+  Closed = 'Closed',
+  Comment = 'Comment'
 }
 
 export const VOID_ELEMENTS = [

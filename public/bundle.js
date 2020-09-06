@@ -30,6 +30,7 @@
         TagState["Opened"] = "Opened";
         TagState["Closing"] = "Closing";
         TagState["Closed"] = "Closed";
+        TagState["Comment"] = "Comment";
     })(TagState || (TagState = {}));
     const VOID_ELEMENTS = [
         'img',
@@ -54,6 +55,7 @@
             this.template = '';
             this.buffer = '';
             this.currentNode = null;
+            this.index = 0;
             this.template = template;
             this.parse();
         }
@@ -72,8 +74,12 @@
         get isSelfClosing() {
             return VOID_ELEMENTS.includes(this.currentNode.tag);
         }
+        get isComment() {
+            return this.currentNode?.state === TagState.Comment;
+        }
         parse() {
             for (let i = 0; i < this.template.length; i++) {
+                this.index = i;
                 this.buffer = this.template[i];
                 this.process();
             }
@@ -90,14 +96,17 @@
                 this.setTextNode();
         }
         setBracketState() {
-            if (this.buffer === Bracket.Open)
+            if (this.buffer === Bracket.Open && !this.isComment)
                 this.openTag();
-            if (this.buffer === Bracket.Closing)
+            if (this.buffer === Bracket.Closing && !this.isComment)
                 this.closingTag();
             if (this.buffer === Bracket.End)
                 this.endTag();
         }
         setTag() {
+            const becomesComment = this.buffer === '!' && this.template[this.index - 1] === Bracket.Open;
+            if (becomesComment)
+                return this.setState(TagState.Comment);
             if (this.buffer === ' ') {
                 this.setState(TagState.Attributes);
                 this.setAttributes();
@@ -195,6 +204,10 @@
             // refactor dupe logic
             if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
                 this.setSelfClosing();
+                this.currentNode = this.findOpenParent(this.currentNode);
+            }
+            if (this.isComment && this.template[this.index - 1] === '-') {
+                this.setState(TagState.Closed);
                 this.currentNode = this.findOpenParent(this.currentNode);
             }
             if (this.isClosing) {
@@ -481,6 +494,7 @@
             this.root = document.querySelector(element);
             this.createComponent(Component, props);
             this.nodes = new TemplateParse(this.component.template).nodes;
+            console.log(this.nodes);
             this.observe();
             new Render(Reflection, this.nodes, this.proxy, this.root);
         }
@@ -515,7 +529,7 @@
     }
 
     class Child {
-      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <button click=\"{increment}\">increment parent's count</button>\n</div>\n\n\n"
+      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <p>good bye from child now...</p>\n</div>\n\n\n"
         count = 0
         num = 5
         foo = 'backup' // default value for prop if undefined

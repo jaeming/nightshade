@@ -4,7 +4,9 @@
   <p>prop count: {count}, {num}</p>
   <small>another prop: *{hi}*</small>
   <button click="{increase}">increase num</button>
+  <!-- <this> <hr /> is a comment -->
   <button click="{increment}">increment parent's count</button>
+  <p>good bye from child now...</p>
 </div>
 
 <script>
