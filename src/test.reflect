@@ -39,6 +39,14 @@
     <button click="{addText}">add text to list</button>
     <button click="{clearText}">clear text</button>
   </div>
+  <hr />
+  <div>
+    <h3>lets do some conditional rendering</h3>
+    <article if="{showArticle}">~Now you see me~</article>
+    <br />
+    <button click="{toggleShow}">toggle visibility</button>
+  </div>
+  <hr />
   more main here!
 </main>
 
@@ -56,6 +64,7 @@
     style = 'counter-class'
     someText = 'test'
     items = []
+    showArticle = true
 
     increment () {
       this.count++
@@ -79,6 +88,10 @@
 
     clearText () {
       this.someText = ''
+    }
+
+    toggleShow () {
+      this.showArticle = !this.showArticle
     }
   }
 </script>

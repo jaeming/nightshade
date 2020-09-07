@@ -14,7 +14,7 @@
     const IF = 'if';
     const MODEL = 'model';
     const EACH = 'each';
-    const HANDLERS = [CLICK, INPUT, IF, MODEL, EACH];
+    const HANDLERS = [CLICK, INPUT, MODEL, EACH];
     // parser
     var Bracket;
     (function (Bracket) {
@@ -49,6 +49,7 @@
         'wbr'
     ];
 
+    // BIG TODO: handle html entities
     class TemplateParse {
         constructor(template) {
             this.nodes = [];
@@ -289,20 +290,32 @@
             this.index = 0;
             while (this.index < this.nodes.length) {
                 this.node = this.nodes[this.index];
+                if (this.isConditional)
+                    this.setIf();
                 options.update ? this.update() : this.create();
                 this.index++;
             }
         }
-        create() {
+        create(opts = {}) {
+            if (this.node.hidden)
+                return;
             this.node.tag === 'text' ? this.createTextNode() : this.createElement();
-            if (!this.isEach)
-                this.append();
+            if (!this.isEach && !this.node.hidden)
+                this.append(opts);
             if (this.isComponent)
                 return this.createComponent();
         }
         update() {
-            // todo: deal with if's
             this.el = document.querySelector(`[data-ref="${this.node.id}"]`);
+            if (this.node.hidden && this.el) {
+                this.parentEl.removeChild(this.el); // remove newly hidden
+            }
+            else if (!this.node.hidden && !this.el) {
+                return this.recreate(); // recreate previously hidden
+            }
+            else if (this.node.hidden && !this.el) {
+                return; // nothing to do
+            }
             if (this.node.tag === 'text') {
                 this.updateTextNode();
             }
@@ -311,6 +324,13 @@
             }
             if (this.isComponent)
                 this.updateComponent();
+        }
+        recreate() {
+            if (!this.node.conditionalRoot)
+                return this.create();
+            // we need to append in the right order
+            const index = this.node.parent.children.findIndex(i => i.id === this.node.id);
+            this.create({ insertBefore: { position: index } });
         }
         createElement() {
             this.el = document.createElement(this.node.tag);
@@ -383,13 +403,30 @@
             const handlerType = HANDLERS.find(i => i === key);
             return [handlerType, handler];
         }
-        append() {
+        append(opts = {}) {
             if (this.node.parent?.id) {
-                this.parentEl.appendChild(this.el);
+                opts.insertBefore
+                    ? this.appendBefore(opts.insertBefore.position)
+                    : this.parentEl.appendChild(this.el);
             }
             else if (this.root) {
                 this.root.appendChild(this.el);
             }
+        }
+        appendBefore(position) {
+            const nodes = this.node.parent.children;
+            const findNextSibling = (index) => {
+                index += 1;
+                if (index - 2 > nodes.length)
+                    return null; // no next sibling
+                const id = nodes[index].id;
+                const el = document.querySelector(`[data-ref="${id}"]`);
+                return el ? el : findNextSibling(index);
+            };
+            const element = findNextSibling(position);
+            element
+                ? this.parentEl.insertBefore(this.el, element)
+                : this.parentEl.appendChild(this.el);
         }
         textContent(content) {
             const bindings = this.bindMatches(content);
@@ -426,12 +463,24 @@
             return str.replace(/[{}]/g, '');
         }
         trackDependency(prop) {
+            // TODO: this is broken for expressions :(
             this.node.tracks
                 ? this.node.tracks.add(prop)
                 : (this.node.tracks = new Set([prop]));
         }
         setRef() {
             this.el.setAttribute('data-ref', this.node.id);
+        }
+        setIf() {
+            const { value } = (this.node.attributes || []).find(a => a.key === IF);
+            const val = this.unwrapMatch(value);
+            this.node.conditionalRoot = true;
+            this.node.hidden = !this.deriveBound(val);
+            this.trackDependency(val);
+            this.node.children.forEach(n => {
+                n.hidden = this.node.hidden;
+                n.tracks ? n.tracks.add(val) : (n.tracks = new Set([val]));
+            });
         }
         setEach(attr) {
             const val = this.unwrapMatch(attr.value); // accept either bracewrap or not
@@ -453,6 +502,9 @@
         }
         get isEach() {
             return this.node.attributes?.map(n => n.key)?.includes(EACH);
+        }
+        get isConditional() {
+            return (this.node.attributes || []).map(a => a.key).includes(IF);
         }
         cloneEachNode(eachProps, index) {
             const id = uid();
@@ -498,7 +550,6 @@
             this.root = document.querySelector(element);
             this.createComponent(Component, props);
             this.nodes = new TemplateParse(this.component.template).nodes;
-            console.log(this.nodes);
             this.observe();
             new Render(Reflection, this.nodes, this.proxy, this.root);
         }
@@ -566,7 +617,7 @@
       }
 
     class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child\n      hi=\"{msg}\"\n      increment=\"{increment}\"\n      count=\"{count}\"\n      foobar=\"foobar\"\n    ></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  more main here!\n</main>\n\n\n"
+      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child\n      hi=\"{msg}\"\n      increment=\"{increment}\"\n      count=\"{count}\"\n      foobar=\"foobar\"\n    ></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  <hr />\n  <div>\n    <h3>lets do some conditional rendering</h3>\n    <article if=\"{showArticle}\">~Now you see me~</article>\n    <br />\n    <button click=\"{toggleShow}\">toggle visibility</button>\n  </div>\n  <hr />\n  more main here!\n</main>\n\n\n"
         components = {
           Child
         }
@@ -577,6 +628,7 @@
         style = 'counter-class'
         someText = 'test'
         items = []
+        showArticle = true
 
         increment () {
           this.count++;
@@ -600,6 +652,10 @@
 
         clearText () {
           this.someText = '';
+        }
+
+        toggleShow () {
+          this.showArticle = !this.showArticle;
         }
       }
 

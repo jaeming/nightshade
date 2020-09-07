@@ -1,6 +1,8 @@
 import { uid } from './utils'
 import { TagState, VOID_ELEMENTS, BRACKETS, Bracket } from './types'
 
+// BIG TODO: handle html entities
+
 export class TemplateParse {
   nodes = []
   template = ''

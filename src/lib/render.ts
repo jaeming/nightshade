@@ -1,4 +1,4 @@
-import { HANDLERS, EACH, Options, Attribute } from './types'
+import { HANDLERS, EACH, IF, Options, Attribute } from './types'
 import { uid } from './utils'
 
 export class Render {
@@ -15,26 +15,47 @@ export class Render {
   ) {
     while (this.index < this.nodes.length) {
       this.node = this.nodes[this.index]
+      if (this.isConditional) this.setIf()
       options.update ? this.update() : this.create()
       this.index++
     }
   }
 
-  create () {
+  create (opts = {}) {
+    if (this.node.hidden) return
+
     this.node.tag === 'text' ? this.createTextNode() : this.createElement()
-    if (!this.isEach) this.append()
+    if (!this.isEach && !this.node.hidden) this.append(opts)
     if (this.isComponent) return this.createComponent()
   }
 
   update () {
-    // todo: deal with if's
     this.el = document.querySelector(`[data-ref="${this.node.id}"]`)
+
+    if (this.node.hidden && this.el) {
+      this.parentEl.removeChild(this.el) // remove newly hidden
+    } else if (!this.node.hidden && !this.el) {
+      return this.recreate() // recreate previously hidden
+    } else if (this.node.hidden && !this.el) {
+      return // nothing to do
+    }
+
     if (this.node.tag === 'text') {
       this.updateTextNode()
     } else {
       this.setAttributes()
     }
     if (this.isComponent) this.updateComponent()
+  }
+
+  recreate () {
+    if (!this.node.conditionalRoot) return this.create()
+    // we need to append in the right order
+    const index = this.node.parent.children.findIndex(
+      i => i.id === this.node.id
+    )
+
+    this.create({ insertBefore: { position: index } })
   }
 
   createElement () {
@@ -92,7 +113,7 @@ export class Render {
     this.node.props = props ? { ...props, ...prop } : { ...prop, parent }
   }
 
-  setAttrBinding (attr, bindings) {
+  setAttrBinding (attr: Attribute, bindings) {
     if (!this.el) return // because we are re-building "each" nodes instead of updating, we have to avoid this
 
     const prop = this.unwrapMatch(bindings[0])
@@ -104,7 +125,6 @@ export class Render {
 
   setHandler (attr: Attribute) {
     if (attr.key === EACH) return this.setEach(attr)
-
     const [handlerType, handler] = this.deriveHandler(attr)
     this.el.addEventListener(handlerType, handler, false)
     if (this.isComponent) this.setProp({ key: attr.key, value: handler })
@@ -117,12 +137,30 @@ export class Render {
     return [handlerType, handler]
   }
 
-  append () {
+  append (opts: { insertBefore?: { position: number } } = {}) {
     if (this.node.parent?.id) {
-      this.parentEl.appendChild(this.el)
+      opts.insertBefore
+        ? this.appendBefore(opts.insertBefore.position)
+        : this.parentEl.appendChild(this.el)
     } else if (this.root) {
       this.root.appendChild(this.el)
     }
+  }
+
+  appendBefore (position) {
+    const nodes = this.node.parent.children
+    const findNextSibling = (index: number) => {
+      index += 1
+      if (index - 2 > nodes.length) return null // no next sibling
+
+      const id = nodes[index].id
+      const el = document.querySelector(`[data-ref="${id}"]`)
+      return el ? el : findNextSibling(index)
+    }
+    const element = findNextSibling(position)
+    element
+      ? this.parentEl.insertBefore(this.el, element)
+      : this.parentEl.appendChild(this.el)
   }
 
   textContent (content) {
@@ -167,6 +205,7 @@ export class Render {
   }
 
   trackDependency (prop: string) {
+    // TODO: this is broken for expressions :(
     this.node.tracks
       ? this.node.tracks.add(prop)
       : (this.node.tracks = new Set([prop]))
@@ -174,6 +213,18 @@ export class Render {
 
   setRef () {
     this.el.setAttribute('data-ref', this.node.id)
+  }
+
+  setIf () {
+    const { value } = (this.node.attributes || []).find(a => a.key === IF)
+    const val = this.unwrapMatch(value)
+    this.node.conditionalRoot = true
+    this.node.hidden = !this.deriveBound(val)
+    this.trackDependency(val)
+    this.node.children.forEach(n => {
+      n.hidden = this.node.hidden
+      n.tracks ? n.tracks.add(val) : (n.tracks = new Set([val]))
+    })
   }
 
   setEach (attr: Attribute) {
@@ -199,6 +250,10 @@ export class Render {
 
   get isEach () {
     return this.node.attributes?.map(n => n.key)?.includes(EACH)
+  }
+
+  get isConditional () {
+    return (this.node.attributes || []).map(a => a.key).includes(IF)
   }
 
   cloneEachNode (eachProps, index) {

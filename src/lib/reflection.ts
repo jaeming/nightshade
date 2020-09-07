@@ -11,7 +11,6 @@ export default class Reflection {
     this.root = document.querySelector(element)
     this.createComponent(Component, props)
     this.nodes = new TemplateParse(this.component.template).nodes
-    console.log(this.nodes)
     this.observe()
     new Render(Reflection, this.nodes, this.proxy, this.root)
   }

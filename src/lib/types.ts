@@ -6,7 +6,7 @@ export const IF = 'if'
 export const MODEL = 'model'
 export const EACH = 'each'
 
-export const HANDLERS = [CLICK, INPUT, IF, MODEL, EACH]
+export const HANDLERS = [CLICK, INPUT, MODEL, EACH]
 
 export interface Options {
   update?: boolean
