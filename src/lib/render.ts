@@ -31,16 +31,19 @@ export class Render {
 
   update () {
     this.el = document.querySelector(`[data-ref="${this.node.id}"]`)
+    const isText = this.node.tag === 'text'
 
-    if (this.node.hidden && this.el) {
-      this.parentEl.removeChild(this.el) // remove newly hidden
-    } else if (!this.node.hidden && !this.el) {
-      return this.recreate() // recreate previously hidden
-    } else if (this.node.hidden && !this.el) {
-      return // nothing to do
+    if (this.node.hidden) {
+      if (this.el) {
+        this.parentEl.removeChild(this.el)
+      } else {
+        return
+      }
+    } else {
+      if (!this.el && !isText) return this.recreate()
     }
 
-    if (this.node.tag === 'text') {
+    if (isText) {
       this.updateTextNode()
     } else {
       this.setAttributes()
@@ -80,13 +83,20 @@ export class Render {
   }
 
   updateTextNode () {
+    let foundText = false
     for (let n of this.parentEl.childNodes) {
       if (
         n.nodeName === '#text' &&
         n.nodeValue.includes(this.node.interpolatedContent)
       ) {
+        foundText = true
         n.nodeValue = this.interpolatedContent()
       }
+    }
+    if (!foundText) {
+      // this is necessary because of "if" statements
+      this.createTextNode()
+      this.append()
     }
   }
 
