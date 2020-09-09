@@ -225,10 +225,11 @@ export class Render {
         ? this.node.tracks.add(prop)
         : (this.node.tracks = new Set([prop]))
     }
-    // trying to detect properties in an expression (there will be many more edgecases to discover!)
-    propOrExpression.split(/\.|\+|-|:|\?|\s/g).forEach(p => {
-      p = p.replace(/ *\[[^\]]*]|"| *\([^)]*\) */g, '').trim()
-      if (p in this.component) return addDep(p)
+
+    if (propOrExpression in this.component) return addDep(propOrExpression)
+
+    Object.keys(this.component).forEach(prop => {
+      if (propOrExpression.includes(prop)) addDep(prop)
     })
   }
 
