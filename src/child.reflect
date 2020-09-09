@@ -7,6 +7,7 @@
   <!-- <this> <hr /> is a comment -->
   <button click="{increment}">increment parent's count</button>
   <h2>dependency in an expression: {dep + dep}</h2>
+  <input type="text" input="{changeDep}" value="{dep}" />
   <p>good bye from child now...</p>
 </div>
 
@@ -41,6 +42,10 @@
     increase () {
       this.num += 1
       this.count += 5
+    }
+
+    changeDep (e) {
+      this.dep = e.target.value
     }
   }
 </script>

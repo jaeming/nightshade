@@ -402,7 +402,8 @@
             if (attr.key === EACH)
                 return this.setEach(attr);
             const [handlerType, handler] = this.deriveHandler(attr);
-            this.el.addEventListener(handlerType, handler, false);
+            if (!this.options.update)
+                this.el.addEventListener(handlerType, handler, false);
             if (this.isComponent)
                 this.setProp({ key: attr.key, value: handler });
         }
@@ -472,11 +473,18 @@
             // unwraps from curly braces
             return str.replace(/[{}]/g, '');
         }
-        trackDependency(prop) {
-            // TODO: this is broken for expressions :(
-            this.node.tracks
-                ? this.node.tracks.add(prop)
-                : (this.node.tracks = new Set([prop]));
+        trackDependency(propOrExpression) {
+            const addDep = prop => {
+                this.node.tracks
+                    ? this.node.tracks.add(prop)
+                    : (this.node.tracks = new Set([prop]));
+            };
+            // trying to detect properties in an expression (there will be many more edgecases to discover!)
+            propOrExpression.split(/\.|\+|-|:|\?|\s/g).forEach(p => {
+                p = p.replace(/ *\[[^\]]*]|"| *\([^)]*\) */g, '').trim();
+                if (p in this.component)
+                    return addDep(p);
+            });
         }
         setRef() {
             this.el.setAttribute('data-ref', this.node.id);
@@ -576,6 +584,7 @@
         update(prop, receiver) {
             console.log('update', String(prop), receiver[prop]);
             const nodes = this.nodes.filter(n => n.tracks?.has(prop));
+            console.log(nodes);
             new Render(Reflection, nodes, this.proxy, this.root, { update: true, prop });
             // find all elements that track the prop as a dependency and update them
             // in the case of "if" we need to create a new elements, or remove them
@@ -594,7 +603,7 @@
     }
 
     class Child {
-      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> <hr /> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <h2>dependency in an expression: {dep + dep}</h2>\n  <p>good bye from child now...</p>\n</div>\n\n\n"
+      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> <hr /> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <h2>dependency in an expression: {dep + dep}</h2>\n  <input type=\"text\" input=\"{changeDep}\" value=\"{dep}\" />\n  <p>good bye from child now...</p>\n</div>\n\n\n"
         count = 0
         num = 5
         foo = 'backup' // default value for prop if undefined
@@ -624,6 +633,10 @@
         increase () {
           this.num += 1;
           this.count += 5;
+        }
+
+        changeDep (e) {
+          this.dep = e.target.value;
         }
       }
 

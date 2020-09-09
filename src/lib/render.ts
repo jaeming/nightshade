@@ -133,8 +133,11 @@ export class Render {
 
   setHandler (attr: Attribute) {
     if (attr.key === EACH) return this.setEach(attr)
+
     const [handlerType, handler] = this.deriveHandler(attr)
-    this.el.addEventListener(handlerType, handler, false)
+    if (!this.options.update)
+      this.el.addEventListener(handlerType, handler, false)
+
     if (this.isComponent) this.setProp({ key: attr.key, value: handler })
   }
 
@@ -216,11 +219,17 @@ export class Render {
     return str.replace(/[{}]/g, '')
   }
 
-  trackDependency (prop: string) {
-    // TODO: this is broken for expressions :(
-    this.node.tracks
-      ? this.node.tracks.add(prop)
-      : (this.node.tracks = new Set([prop]))
+  trackDependency (propOrExpression: string) {
+    const addDep = prop => {
+      this.node.tracks
+        ? this.node.tracks.add(prop)
+        : (this.node.tracks = new Set([prop]))
+    }
+    // trying to detect properties in an expression (there will be many more edgecases to discover!)
+    propOrExpression.split(/\.|\+|-|:|\?|\s/g).forEach(p => {
+      p = p.replace(/ *\[[^\]]*]|"| *\([^)]*\) */g, '').trim()
+      if (p in this.component) return addDep(p)
+    })
   }
 
   setRef () {
