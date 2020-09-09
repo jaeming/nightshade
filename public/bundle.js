@@ -369,9 +369,7 @@
             }
         }
         interpolatedContent() {
-            const content = this.textContent(this.node.content);
-            this.node.interpolatedContent = content;
-            return content;
+            return (this.node.interpolatedContent = this.textContent(this.node.content));
         }
         setAttributes() {
             this.node?.attributes?.forEach((attr) => {
@@ -462,7 +460,8 @@
                 return func(this.component[prop][index], index);
             }
             else {
-                return new Function(`return ${expression}`);
+                let func = new Function(...Object.keys(this.component), `return ${expression}`);
+                return func(...Object.values(this.component));
             }
         }
         bindMatches(str) {
@@ -595,10 +594,11 @@
     }
 
     class Child {
-      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> <hr /> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <p>good bye from child now...</p>\n</div>\n\n\n"
+      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> <hr /> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <h2>dependency in an expression: {dep + dep}</h2>\n  <p>good bye from child now...</p>\n</div>\n\n\n"
         count = 0
         num = 5
         foo = 'backup' // default value for prop if undefined
+        dep = 'I am a dependency'
 
         // increment
         // ^ note you don't have to declare the prop if you don't need it for type-checking.

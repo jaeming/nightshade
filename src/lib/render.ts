@@ -101,9 +101,7 @@ export class Render {
   }
 
   interpolatedContent () {
-    const content = this.textContent(this.node.content)
-    this.node.interpolatedContent = content
-    return content
+    return (this.node.interpolatedContent = this.textContent(this.node.content))
   }
 
   setAttributes () {
@@ -200,7 +198,11 @@ export class Render {
       )
       return func(this.component[prop][index], index)
     } else {
-      return new Function(`return ${expression}`)
+      let func = new Function(
+        ...Object.keys(this.component),
+        `return ${expression}`
+      )
+      return func(...Object.values(this.component))
     }
   }
 

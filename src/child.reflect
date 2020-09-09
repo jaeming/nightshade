@@ -6,6 +6,7 @@
   <button click="{increase}">increase num</button>
   <!-- <this> <hr /> is a comment -->
   <button click="{increment}">increment parent's count</button>
+  <h2>dependency in an expression: {dep + dep}</h2>
   <p>good bye from child now...</p>
 </div>
 
@@ -14,6 +15,7 @@
     count = 0
     num = 5
     foo = 'backup' // default value for prop if undefined
+    dep = 'I am a dependency'
 
     // increment
     // ^ note you don't have to declare the prop if you don't need it for type-checking.
