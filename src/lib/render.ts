@@ -135,9 +135,7 @@ export class Render {
     if (attr.key === EACH) return this.setEach(attr)
 
     const [handlerType, handler] = this.deriveHandler(attr)
-    if (!this.options.update)
-      this.el.addEventListener(handlerType, handler, false)
-
+    this.addListener(handlerType, handler)
     if (this.isComponent) this.setProp({ key: attr.key, value: handler })
   }
 
@@ -146,6 +144,15 @@ export class Render {
     const handler = this.component[val].bind(this.component)
     const handlerType = HANDLERS.find(i => i === key)
     return [handlerType, handler]
+  }
+
+  addListener (handlerType, handler) {
+    if (!this.node.listeners) this.node.listeners = {}
+    const existing = this.node.listeners[handlerType]
+    if (!existing) {
+      this.el.addEventListener(handlerType, handler, false)
+      this.node.listeners[handlerType] = true
+    }
   }
 
   append (opts: { insertBefore?: { position: number } } = {}) {
@@ -229,6 +236,7 @@ export class Render {
     if (propOrExpression in this.component) return addDep(propOrExpression)
 
     Object.keys(this.component).forEach(prop => {
+      // still not perfect but less error-prone than regex solution
       if (propOrExpression.includes(prop)) addDep(prop)
     })
   }
