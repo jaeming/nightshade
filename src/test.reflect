@@ -54,9 +54,8 @@
   import Child from './child.reflect'
 
   export default class Foo {
-    components = {
-      Child
-    }
+    components = { Child }
+
     foo = 'oppppSSS!'
     msg = 'Hello World!'
     question = 'How are you tonight?'
@@ -65,6 +64,14 @@
     someText = 'test'
     items = []
     showArticle = true
+
+    onMount () {
+      console.log('on mount', (this.count = 3))
+    }
+
+    onDispose () {
+      console.log('on dispose', this.showArticle)
+    }
 
     increment () {
       this.count++

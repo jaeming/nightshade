@@ -579,6 +579,14 @@
             this.nodes = new TemplateParse(this.component.template).nodes;
             this.observe();
             new Render(Reflection, this.nodes, this.proxy, this.root);
+            this.proxy.onMount && this.proxy.onMount();
+        }
+        dispose() {
+            this.proxy.onDispose && this.proxy.onDispose();
+            this.root.textContent = '';
+            this.nodes = null;
+            this.component = null;
+            this.proxy = null;
         }
         observe() {
             const update = this.update.bind(this);
@@ -593,7 +601,6 @@
         update(prop, receiver) {
             console.log('update', String(prop), receiver[prop]);
             const nodes = this.nodes.filter(n => n.tracks?.has(prop));
-            console.log(nodes);
             new Render(Reflection, nodes, this.proxy, this.root, { update: true, prop });
             // find all elements that track the prop as a dependency and update them
             // in the case of "if" we need to create a new elements, or remove them
@@ -607,7 +614,6 @@
                 if (typeof v !== 'undefined')
                     this.component[k] = v;
             });
-            // listen to parent for prop changes
         }
     }
 
@@ -651,9 +657,8 @@
 
     class Foo {
       template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child\n      hi=\"{msg}\"\n      increment=\"{increment}\"\n      count=\"{count}\"\n      foobar=\"foobar\"\n    ></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  <hr />\n  <div>\n    <h3>lets do some conditional rendering</h3>\n    <article if=\"{showArticle}\">~Now you see me~</article>\n    <br />\n    <button click=\"{toggleShow}\">toggle visibility</button>\n  </div>\n  <hr />\n  more main here!\n</main>\n\n\n"
-        components = {
-          Child
-        }
+        components = { Child }
+
         foo = 'oppppSSS!'
         msg = 'Hello World!'
         question = 'How are you tonight?'
@@ -662,6 +667,14 @@
         someText = 'test'
         items = []
         showArticle = true
+
+        onMount () {
+          console.log('on mount', (this.count = 3));
+        }
+
+        onDispose () {
+          console.log('on dispose', this.showArticle);
+        }
 
         increment () {
           this.count++;
