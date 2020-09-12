@@ -8,6 +8,8 @@ export const EACH = 'each'
 
 export const HANDLERS = [CLICK, INPUT, MODEL, EACH]
 
+export const ROUTER = 'Router'
+
 export interface Options {
   update?: boolean
   prop?: string

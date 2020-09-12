@@ -1,0 +1,9 @@
+<main>
+  <h1>ABOUT</h1>
+</main>
+
+<script>
+  export default class About {
+    msg = 'about'
+  }
+</script>

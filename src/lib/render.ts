@@ -1,4 +1,4 @@
-import { HANDLERS, EACH, IF, Options, Attribute } from './types'
+import { HANDLERS, EACH, IF, Options, Attribute, ROUTER } from './types'
 import { uid } from './utils'
 
 export class Render {
@@ -11,6 +11,7 @@ export class Render {
     public nodes,
     public component,
     public root,
+    public router,
     public options: Options = {}
   ) {
     while (this.index < this.nodes.length) {
@@ -72,10 +73,17 @@ export class Render {
   }
 
   createComponent () {
-    const Component = this.component.components[this.node.tag]
-    const instance = new this.Reflection()
-    instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props)
-    this.node.component = instance.proxy
+    if (this.node.tag === ROUTER) {
+      const Component = this.router.currentComponent
+      const instance = new this.Reflection()
+      instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props)
+      this.node.component = instance.proxy
+    } else {
+      const Component = this.component.components[this.node.tag]
+      const instance = new this.Reflection()
+      instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props)
+      this.node.component = instance.proxy
+    }
   }
 
   updateComponent () {
@@ -272,7 +280,7 @@ export class Render {
     this.parentEl.innerHTML = '' // hack to flush each nodes until we have proper updating
     // When we 'update' this is completly rebuilding the 'each' nodes and children instead of updating the existing ones.
     // Will need to do something more efficient later
-    new Render(this.Reflection, nodes, this.component, null)
+    new Render(this.Reflection, nodes, this.component, null, this.router)
 
     this.index = this.index + this.node.children.length // fast-forward to next node after each decendants
     this.trackDependency(prop)
@@ -320,6 +328,6 @@ export class Render {
   }
 
   get isComponent () {
-    return this.components.includes(this.node.tag)
+    return this.components.includes(this.node.tag) || this.node.tag === ROUTER
   }
 }

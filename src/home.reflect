@@ -1,0 +1,9 @@
+<main>
+  <h1>HOME: {msg}</h1>
+</main>
+
+<script>
+  export default class Home {
+    msg = 'home'
+  }
+</script>

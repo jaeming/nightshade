@@ -1,8 +1,8 @@
 import Reflection from './lib/reflection'
-import Test from './test.reflect'
+import Layout from './layout.reflect'
+import { router } from './router.js'
 
 const app = new Reflection()
 
-let myProp = 'Test Prop'
-
-app.mount(Test, '#app', { myProp })
+app.router = router
+app.mount(Layout, '#app', { myProp: 'Test Prop' })

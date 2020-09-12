@@ -15,6 +15,14 @@ export class TemplateParse {
     this.parse()
   }
 
+  get prevBuffer () {
+    return this.template[this.index - 1]
+  }
+
+  get nextBuffer () {
+    return this.template[this.index + 1]
+  }
+
   get isOpening () {
     return this.currentNode.state === TagState.Opening
   }
@@ -64,7 +72,7 @@ export class TemplateParse {
 
   setTag () {
     const becomesComment =
-      this.buffer === '!' && this.template[this.index - 1] === Bracket.Open
+      this.buffer === '!' && this.prevBuffer === Bracket.Open
     if (becomesComment) return this.setState(TagState.Comment)
 
     if ([' ', '\n'].includes(this.buffer)) {
@@ -170,8 +178,7 @@ export class TemplateParse {
     }
     if (this.isComment) {
       const closingComment =
-        this.template[this.index - 1] === '-' &&
-        this.template[this.index - 2] === '-'
+        this.prevBuffer === '-' && this.template[this.index - 2] === '-'
       if (closingComment) {
         this.setState(TagState.Closed)
         this.currentNode = this.findOpenParent(this.currentNode)
@@ -184,14 +191,17 @@ export class TemplateParse {
   }
 
   closingTag () {
-    if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
-      this.setSelfClosing()
+    // ignore closing token if not accompanied by appropriate buffer
+    if (this.prevBuffer === Bracket.Open || this.nextBuffer === Bracket.End) {
+      if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
+        this.setSelfClosing()
+      }
+      if (this.isOpening && !this.isSelfClosing) {
+        // discard current node since it was just a closing tag
+        this.currentNode = this.currentNode.parent // go back to prev node
+      }
+      this.setState(TagState.Closing)
     }
-    if (this.isOpening && !this.isSelfClosing) {
-      // discard current node since it was just a closing tag
-      this.currentNode = this.currentNode.parent // go back to prev node
-    }
-    this.setState(TagState.Closing)
   }
 
   findOpenParent (node) {

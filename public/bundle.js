@@ -15,6 +15,7 @@
     const MODEL = 'model';
     const EACH = 'each';
     const HANDLERS = [CLICK, INPUT, MODEL, EACH];
+    const ROUTER = 'Router';
     // parser
     var Bracket;
     (function (Bracket) {
@@ -59,6 +60,12 @@
             this.index = 0;
             this.template = template;
             this.parse();
+        }
+        get prevBuffer() {
+            return this.template[this.index - 1];
+        }
+        get nextBuffer() {
+            return this.template[this.index + 1];
         }
         get isOpening() {
             return this.currentNode.state === TagState.Opening;
@@ -105,7 +112,7 @@
                 this.endTag();
         }
         setTag() {
-            const becomesComment = this.buffer === '!' && this.template[this.index - 1] === Bracket.Open;
+            const becomesComment = this.buffer === '!' && this.prevBuffer === Bracket.Open;
             if (becomesComment)
                 return this.setState(TagState.Comment);
             if ([' ', '\n'].includes(this.buffer)) {
@@ -208,8 +215,7 @@
                 this.currentNode = this.findOpenParent(this.currentNode);
             }
             if (this.isComment) {
-                const closingComment = this.template[this.index - 1] === '-' &&
-                    this.template[this.index - 2] === '-';
+                const closingComment = this.prevBuffer === '-' && this.template[this.index - 2] === '-';
                 if (closingComment) {
                     this.setState(TagState.Closed);
                     this.currentNode = this.findOpenParent(this.currentNode);
@@ -221,14 +227,17 @@
             }
         }
         closingTag() {
-            if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
-                this.setSelfClosing();
+            // ignore closing token if not accompanied by appropriate buffer
+            if (this.prevBuffer === Bracket.Open || this.nextBuffer === Bracket.End) {
+                if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
+                    this.setSelfClosing();
+                }
+                if (this.isOpening && !this.isSelfClosing) {
+                    // discard current node since it was just a closing tag
+                    this.currentNode = this.currentNode.parent; // go back to prev node
+                }
+                this.setState(TagState.Closing);
             }
-            if (this.isOpening && !this.isSelfClosing) {
-                // discard current node since it was just a closing tag
-                this.currentNode = this.currentNode.parent; // go back to prev node
-            }
-            this.setState(TagState.Closing);
         }
         findOpenParent(node) {
             // find closest open parent
@@ -279,11 +288,12 @@
     }
 
     class Render {
-        constructor(Reflection, nodes, component, root, options = {}) {
+        constructor(Reflection, nodes, component, root, router, options = {}) {
             this.Reflection = Reflection;
             this.nodes = nodes;
             this.component = component;
             this.root = root;
+            this.router = router;
             this.options = options;
             this.el = null;
             this.node = null;
@@ -345,10 +355,18 @@
             this.el = document.createTextNode(this.interpolatedContent());
         }
         createComponent() {
-            const Component = this.component.components[this.node.tag];
-            const instance = new this.Reflection();
-            instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props);
-            this.node.component = instance.proxy;
+            if (this.node.tag === ROUTER) {
+                const Component = this.router.currentComponent;
+                const instance = new this.Reflection();
+                instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props);
+                this.node.component = instance.proxy;
+            }
+            else {
+                const Component = this.component.components[this.node.tag];
+                const instance = new this.Reflection();
+                instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props);
+                this.node.component = instance.proxy;
+            }
         }
         updateComponent() {
             this.node.component[this.options.prop] = this.component[this.options.prop];
@@ -523,7 +541,7 @@
             this.parentEl.innerHTML = ''; // hack to flush each nodes until we have proper updating
             // When we 'update' this is completly rebuilding the 'each' nodes and children instead of updating the existing ones.
             // Will need to do something more efficient later
-            new Render(this.Reflection, nodes, this.component, null);
+            new Render(this.Reflection, nodes, this.component, null, this.router);
             this.index = this.index + this.node.children.length; // fast-forward to next node after each decendants
             this.trackDependency(prop);
         }
@@ -562,7 +580,18 @@
             return Object.keys(obj);
         }
         get isComponent() {
-            return this.components.includes(this.node.tag);
+            return this.components.includes(this.node.tag) || this.node.tag === ROUTER;
+        }
+    }
+
+    class Router {
+        constructor(routes) {
+            this.routes = routes;
+            this.currentPath = '/';
+        }
+        get currentComponent() {
+            const [_, c] = this.routes.find(([path, component]) => this.currentPath === path);
+            return c;
         }
     }
 
@@ -572,13 +601,14 @@
             this.nodes = [];
             this.component = null;
             this.proxy = null;
+            this.router = null;
         }
         mount(Component, element, props = {}) {
             this.root = document.querySelector(element);
             this.createComponent(Component, props);
             this.nodes = new TemplateParse(this.component.template).nodes;
             this.observe();
-            new Render(Reflection, this.nodes, this.proxy, this.root);
+            new Render(Reflection, this.nodes, this.proxy, this.root, this.router);
             this.proxy.onMount && this.proxy.onMount();
         }
         dispose() {
@@ -601,7 +631,10 @@
         update(prop, receiver) {
             console.log('update', String(prop), receiver[prop]);
             const nodes = this.nodes.filter(n => n.tracks?.has(prop));
-            new Render(Reflection, nodes, this.proxy, this.root, { update: true, prop });
+            new Render(Reflection, nodes, this.proxy, this.root, this.router, {
+                update: true,
+                prop
+            });
             // find all elements that track the prop as a dependency and update them
             // in the case of "if" we need to create a new elements, or remove them
         }
@@ -617,99 +650,30 @@
         }
     }
 
-    class Child {
-      template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> <hr /> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <h2>dependency in an expression: {dep + dep}</h2>\n  <input type=\"text\" input=\"{changeDep}\" value=\"{dep}\" />\n  <p>good bye from child now...</p>\n</div>\n\n\n"
-        count = 0
-        num = 5
-        foo = 'backup' // default value for prop if undefined
-        dep = 'I am a dependency'
-
-        // increment
-        // ^ note you don't have to declare the prop if you don't need it for type-checking.
-
-        constructor () {
-          // note constructor is not reactive
-          // Will likely have a dedicated lifecycle hook for mounted anyway
-          this.greet();
-        }
-
-        greet () {
-          this.count = 2;
-          this.hi = 'bye';
-          console.log(
-            'prop is available on instance by default',
-            this.hi,
-            this.count
-          );
-          this.num += 100;
-          this.increase();
-        }
-
-        increase () {
-          this.num += 1;
-          this.count += 5;
-        }
-
-        changeDep (e) {
-          this.dep = e.target.value;
-        }
+    class Layout {
+      template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/home\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n  </div>\n  <Router></Router>\n</main>\n\n\n"
+        msg = 'layout'
       }
 
-    class Foo {
-      template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child\n      hi=\"{msg}\"\n      increment=\"{increment}\"\n      count=\"{count}\"\n      foobar=\"foobar\"\n    ></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  <hr />\n  <div>\n    <h3>lets do some conditional rendering</h3>\n    <article if=\"{showArticle}\">~Now you see me~</article>\n    <br />\n    <button click=\"{toggleShow}\">toggle visibility</button>\n  </div>\n  <hr />\n  more main here!\n</main>\n\n\n"
-        components = { Child }
-
-        foo = 'oppppSSS!'
-        msg = 'Hello World!'
-        question = 'How are you tonight?'
-        count = 1
-        style = 'counter-class'
-        someText = 'test'
-        items = []
-        showArticle = true
-
-        onMount () {
-          console.log('on mount', (this.count = 3));
-        }
-
-        onDispose () {
-          console.log('on dispose', this.showArticle);
-        }
-
-        increment () {
-          this.count++;
-        }
-
-        decrement () {
-          this.count--;
-        }
-
-        handleInput (e) {
-          this.someText = e.target.value;
-        }
-
-        mutateProp (e) {
-          this.myProp = e.target.value;
-        }
-
-        addText () {
-          this.items = [...this.items, { name: this.someText }];
-        }
-
-        clearText () {
-          this.someText = '';
-        }
-
-        toggleShow () {
-          this.showArticle = !this.showArticle;
-        }
+    class Home {
+      template = "<main>\n  <h1>HOME: {msg}</h1>\n</main>\n\n\n"
+        msg = 'home'
       }
+
+    class About {
+      template = "<main>\n  <h1>ABOUT</h1>\n</main>\n\n\n"
+        msg = 'about'
+      }
+
+    const router = new Router([
+      ['/', Home],
+      ['/about', About]
+    ]);
 
     const app = new Reflection();
 
-    let myProp = 'Test Prop';
-
-    app.mount(Foo, '#app', { myProp });
+    app.router = router;
+    app.mount(Layout, '#app', { myProp: 'Test Prop' });
 
 }());
 //# sourceMappingURL=bundle.js.map
