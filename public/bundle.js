@@ -77,13 +77,20 @@
             return this.currentNode.state === TagState.Attributes;
         }
         get isClosing() {
-            return this.currentNode.state === TagState.Closing;
+            return this.currentNode?.state === TagState.Closing;
         }
         get isSelfClosing() {
             return VOID_ELEMENTS.includes(this.currentNode.tag);
         }
         get isComment() {
             return this.currentNode?.state === TagState.Comment;
+        }
+        get isBracket() {
+            if (!BRACKETS.includes(this.buffer))
+                return false;
+            if (this.buffer === Bracket.Closing)
+                return this.prevBuffer === Bracket.Open || this.nextBuffer === Bracket.End;
+            return true;
         }
         parse() {
             for (let i = 0; i < this.template.length; i++) {
@@ -93,9 +100,8 @@
             }
         }
         process() {
-            if (BRACKETS.includes(this.buffer)) {
+            if (this.isBracket)
                 return this.setBracketState();
-            }
             if (this.isOpening)
                 this.setTag();
             if (this.isAttributes)
@@ -227,17 +233,14 @@
             }
         }
         closingTag() {
-            // ignore closing token if not accompanied by appropriate buffer
-            if (this.prevBuffer === Bracket.Open || this.nextBuffer === Bracket.End) {
-                if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
-                    this.setSelfClosing();
-                }
-                if (this.isOpening && !this.isSelfClosing) {
-                    // discard current node since it was just a closing tag
-                    this.currentNode = this.currentNode.parent; // go back to prev node
-                }
-                this.setState(TagState.Closing);
+            if ((this.isOpening || this.isAttributes) && this.isSelfClosing) {
+                this.setSelfClosing();
             }
+            if (this.isOpening && !this.isSelfClosing) {
+                // discard current node since it was just a closing tag
+                this.currentNode = this.currentNode.parent; // go back to prev node
+            }
+            this.setState(TagState.Closing);
         }
         findOpenParent(node) {
             // find closest open parent
@@ -651,7 +654,7 @@
     }
 
     class Layout {
-      template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/home\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n  </div>\n  <Router></Router>\n</main>\n\n\n"
+      template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"home\">Home page</a>\n    <br />\n    <a route=\"about\">About page</a>\n  </div>\n  <Router></Router>\n</main>\n\n\n"
         msg = 'layout'
       }
 
