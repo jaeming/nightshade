@@ -13,8 +13,10 @@ export default class Reflection {
     this.root = document.querySelector(element)
     this.createComponent(Component, props)
     this.nodes = new TemplateParse(this.component.template).nodes
+    this.component.router = this.router
+    this.component.props = props
     this.observe()
-    new Render(Reflection, this.nodes, this.proxy, this.root, this.router)
+    new Render(Reflection, this.nodes, this.proxy, this.root)
     this.proxy.onMount && this.proxy.onMount()
   }
 
@@ -40,7 +42,8 @@ export default class Reflection {
   update (prop, receiver) {
     console.log('update', String(prop), receiver[prop])
     const nodes = this.nodes.filter(n => n.tracks?.has(prop))
-    new Render(Reflection, nodes, this.proxy, this.root, this.router, {
+    console.log(nodes)
+    new Render(Reflection, nodes, this.proxy, this.root, {
       update: true,
       prop
     })

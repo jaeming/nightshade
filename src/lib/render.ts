@@ -1,4 +1,13 @@
-import { HANDLERS, EACH, IF, Options, Attribute, ROUTER } from './types'
+import {
+  HANDLERS,
+  CLICK,
+  EACH,
+  IF,
+  ROUTE,
+  Options,
+  Attribute,
+  ROUTER
+} from './types'
 import { uid } from './utils'
 
 export class Render {
@@ -11,7 +20,6 @@ export class Render {
     public nodes,
     public component,
     public root,
-    public router,
     public options: Options = {}
   ) {
     while (this.index < this.nodes.length) {
@@ -74,10 +82,7 @@ export class Render {
 
   createComponent () {
     if (this.node.tag === ROUTER) {
-      const Component = this.router.currentComponent
-      const instance = new this.Reflection()
-      instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props)
-      this.node.component = instance.proxy
+      this.mountRoutedComponent()
     } else {
       const Component = this.component.components[this.node.tag]
       const instance = new this.Reflection()
@@ -87,7 +92,27 @@ export class Render {
   }
 
   updateComponent () {
-    this.node.component[this.options.prop] = this.component[this.options.prop]
+    if (this.options.prop in this.component.props) {
+      //  update props
+      this.node.component[this.options.prop] = this.component[this.options.prop]
+    }
+    if (this.options.prop === ROUTER.toLowerCase()) {
+      console.log("we've re-routed")
+      // dispose old component
+      this.node.instance.dispose()
+      // render new route
+      this.mountRoutedComponent()
+    }
+  }
+
+  mountRoutedComponent () {
+    this.trackDependency(ROUTER.toLowerCase())
+    const Component = this.component.router.currentComponent
+    const instance = new this.Reflection()
+    console.log(this.component.router)
+    instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props)
+    this.node.component = instance.proxy
+    this.node.instance = instance
   }
 
   updateTextNode () {
@@ -114,12 +139,32 @@ export class Render {
 
   setAttributes () {
     this.node?.attributes?.forEach((attr: Attribute) => {
+      if (attr.key === ROUTE) return this.setRouteLink(attr)
+
       if (HANDLERS.includes(attr.key)) return this.setHandler(attr)
+
       const bindings = this.bindMatches(attr.value)
       if (bindings) return this.setAttrBinding(attr, bindings)
+
       this.el?.setAttribute(attr.key, attr.value)
       if (this.isComponent) this.setProp(attr)
     })
+  }
+
+  setRouteLink ({ key, value }) {
+    const [path, component] = this.component.router.routes.find(
+      r => r[0] === value
+    )
+    this.el?.setAttribute(key, value)
+    this.el?.setAttribute('href', path)
+    this.node.routeTo = component
+    const handler = e => {
+      e.preventDefault()
+      const router = this.component.router
+      router.currentPath = path
+      this.component.router = router // force reassignment so proxy picks up update
+    }
+    this.addListener(CLICK, handler)
   }
 
   setProp ({ key, value }) {
@@ -280,7 +325,7 @@ export class Render {
     this.parentEl.innerHTML = '' // hack to flush each nodes until we have proper updating
     // When we 'update' this is completly rebuilding the 'each' nodes and children instead of updating the existing ones.
     // Will need to do something more efficient later
-    new Render(this.Reflection, nodes, this.component, null, this.router)
+    new Render(this.Reflection, nodes, this.component, null)
 
     this.index = this.index + this.node.children.length // fast-forward to next node after each decendants
     this.trackDependency(prop)

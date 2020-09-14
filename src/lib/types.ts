@@ -1,8 +1,9 @@
 // render
 
-const CLICK = 'click'
+export const CLICK = 'click'
 const INPUT = 'input'
 export const IF = 'if'
+export const ROUTE = 'route'
 export const MODEL = 'model'
 export const EACH = 'each'
 

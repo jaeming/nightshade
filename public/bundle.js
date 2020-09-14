@@ -12,6 +12,7 @@
     const CLICK = 'click';
     const INPUT = 'input';
     const IF = 'if';
+    const ROUTE = 'route';
     const MODEL = 'model';
     const EACH = 'each';
     const HANDLERS = [CLICK, INPUT, MODEL, EACH];
@@ -291,12 +292,11 @@
     }
 
     class Render {
-        constructor(Reflection, nodes, component, root, router, options = {}) {
+        constructor(Reflection, nodes, component, root, options = {}) {
             this.Reflection = Reflection;
             this.nodes = nodes;
             this.component = component;
             this.root = root;
-            this.router = router;
             this.options = options;
             this.el = null;
             this.node = null;
@@ -359,10 +359,7 @@
         }
         createComponent() {
             if (this.node.tag === ROUTER) {
-                const Component = this.router.currentComponent;
-                const instance = new this.Reflection();
-                instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props);
-                this.node.component = instance.proxy;
+                this.mountRoutedComponent();
             }
             else {
                 const Component = this.component.components[this.node.tag];
@@ -372,7 +369,26 @@
             }
         }
         updateComponent() {
-            this.node.component[this.options.prop] = this.component[this.options.prop];
+            if (this.options.prop in this.component.props) {
+                //  update props
+                this.node.component[this.options.prop] = this.component[this.options.prop];
+            }
+            if (this.options.prop === ROUTER.toLowerCase()) {
+                console.log("we've re-routed");
+                // dispose old component
+                this.node.instance.dispose();
+                // render new route
+                this.mountRoutedComponent();
+            }
+        }
+        mountRoutedComponent() {
+            this.trackDependency(ROUTER.toLowerCase());
+            const Component = this.component.router.currentComponent;
+            const instance = new this.Reflection();
+            console.log(this.component.router);
+            instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props);
+            this.node.component = instance.proxy;
+            this.node.instance = instance;
         }
         updateTextNode() {
             let foundText = false;
@@ -394,6 +410,8 @@
         }
         setAttributes() {
             this.node?.attributes?.forEach((attr) => {
+                if (attr.key === ROUTE)
+                    return this.setRouteLink(attr);
                 if (HANDLERS.includes(attr.key))
                     return this.setHandler(attr);
                 const bindings = this.bindMatches(attr.value);
@@ -403,6 +421,19 @@
                 if (this.isComponent)
                     this.setProp(attr);
             });
+        }
+        setRouteLink({ key, value }) {
+            const [path, component] = this.component.router.routes.find(r => r[0] === value);
+            this.el?.setAttribute(key, value);
+            this.el?.setAttribute('href', path);
+            this.node.routeTo = component;
+            const handler = e => {
+                e.preventDefault();
+                const router = this.component.router;
+                router.currentPath = path;
+                this.component.router = router; // force reassignment so proxy picks up update
+            };
+            this.addListener(CLICK, handler);
         }
         setProp({ key, value }) {
             const prop = { [key]: value };
@@ -544,7 +575,7 @@
             this.parentEl.innerHTML = ''; // hack to flush each nodes until we have proper updating
             // When we 'update' this is completly rebuilding the 'each' nodes and children instead of updating the existing ones.
             // Will need to do something more efficient later
-            new Render(this.Reflection, nodes, this.component, null, this.router);
+            new Render(this.Reflection, nodes, this.component, null);
             this.index = this.index + this.node.children.length; // fast-forward to next node after each decendants
             this.trackDependency(prop);
         }
@@ -610,8 +641,10 @@
             this.root = document.querySelector(element);
             this.createComponent(Component, props);
             this.nodes = new TemplateParse(this.component.template).nodes;
+            this.component.router = this.router;
+            this.component.props = props;
             this.observe();
-            new Render(Reflection, this.nodes, this.proxy, this.root, this.router);
+            new Render(Reflection, this.nodes, this.proxy, this.root);
             this.proxy.onMount && this.proxy.onMount();
         }
         dispose() {
@@ -634,7 +667,8 @@
         update(prop, receiver) {
             console.log('update', String(prop), receiver[prop]);
             const nodes = this.nodes.filter(n => n.tracks?.has(prop));
-            new Render(Reflection, nodes, this.proxy, this.root, this.router, {
+            console.log(nodes);
+            new Render(Reflection, nodes, this.proxy, this.root, {
                 update: true,
                 prop
             });
@@ -654,7 +688,7 @@
     }
 
     class Layout {
-      template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"home\">Home page</a>\n    <br />\n    <a route=\"about\">About page</a>\n  </div>\n  <Router></Router>\n</main>\n\n\n"
+      template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n  </div>\n  <Router></Router>\n</main>\n\n\n"
         msg = 'layout'
       }
 

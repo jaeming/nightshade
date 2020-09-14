@@ -1,9 +1,9 @@
 <main>
   <h1>Layout: {msg}</h1>
   <div>
-    <a route="home">Home page</a>
+    <a route="/">Home page</a>
     <br />
-    <a route="about">About page</a>
+    <a route="/about">About page</a>
   </div>
   <Router></Router>
 </main>
