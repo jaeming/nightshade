@@ -385,10 +385,10 @@
             this.trackDependency(ROUTER.toLowerCase());
             const Component = this.component.router.currentComponent;
             const instance = new this.Reflection();
-            console.log(this.component.router);
             instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props);
             this.node.component = instance.proxy;
             this.node.instance = instance;
+            this.component.router.updateHistory();
         }
         updateTextNode() {
             let foundText = false;
@@ -618,6 +618,10 @@
         }
     }
 
+    // TODO: 
+    // - replace URL
+    // - history api
+    // - cold load
     class Router {
         constructor(routes) {
             this.routes = routes;
@@ -626,6 +630,12 @@
         get currentComponent() {
             const [_, c] = this.routes.find(([path, component]) => this.currentPath === path);
             return c;
+        }
+        updateHistory() {
+            const state = {};
+            const title = "";
+            const url = this.currentPath;
+            history.pushState(state, title, url);
         }
     }
 

@@ -109,10 +109,10 @@ export class Render {
     this.trackDependency(ROUTER.toLowerCase())
     const Component = this.component.router.currentComponent
     const instance = new this.Reflection()
-    console.log(this.component.router)
     instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props)
     this.node.component = instance.proxy
     this.node.instance = instance
+    this.component.router.updateHistory()
   }
 
   updateTextNode () {
