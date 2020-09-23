@@ -28,19 +28,27 @@ class HtmlLoader {
   }
 
   injectTemplate () {
-    const exportLine = this.script.match(/export default(.)*?\n/g)[0]
+    const exportLine = this.script.match(/export default(.)*?{/)[0]
     const injected = `${exportLine}  template = ${JSON.stringify(this.html)}\n`
-    this.component = this.script.replace(exportLine, injected)
+    let component = this.script.replace(exportLine, injected)
+    if (this.isTS) { 
+      console.log('todo: handle TS') 
+    }
+    this.component = component
   }
 
   stripScriptTags (str) {
-    return str.replace('<script>', '').replace('</script>', '')
+    return str.replace(/\<script\>|\<script type\="ts"\>|\<script type\='ts'\>|\<\/script\>/, '').replace('</script>', '')
+  }
+
+  get isTS() {
+    return /\<script type\="ts"\>|\<script type\='ts'\>/.test(this.file)
   }
 }
 
 function reflection () {
   return {
-    name: 'ReflectiveJS', // this name will show up in warnings and errors
+    name: 'ReflectiveJS',
     resolveId (source) {
       if (source.endsWith('.reflect')) {
         return source // this signals that rollup should not ask other plugins or check the file system to find this id
@@ -76,11 +84,11 @@ export default {
     sourcemap: true
   },
   plugins: [
+    reflection(),
     typescript({ target: 'esnext' }),
     livereload(),
-    reflection(),
-    resolve(), // tells Rollup how to find date-fns in node_modules
-    commonjs(), // converts date-fns to ES modules
+    resolve(),
+    commonjs(),
     production && terser() // minify, but only in production
   ]
 }

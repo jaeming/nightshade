@@ -687,18 +687,108 @@
         }
     }
 
-    class Layout {
-      template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n  </div>\n  <Router></Router>\n</main>\n\n\n"
+    class Layout {  template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n  </div>\n  <Router></Router>\n</main>\n\n\n"
+
         msg = 'layout'
       }
 
-    class Home {
-      template = "<main>\n  <h1>HOME: {msg}</h1>\n</main>\n\n\n"
+    class Home {  template = "<main>\n  <h1>HOME: {msg}</h1>\n</main>\n\n\n"
+
         msg = 'home'
       }
 
-    class About {
-      template = "<main>\n  <h1>ABOUT</h1>\n</main>\n\n\n"
+    class Child {  template = "<div>\n  <p>I am a child component now:</p>\n  <p>a prop: {foo}</p>\n  <p>prop count: {count}, {num}</p>\n  <small>another prop: *{hi}*</small>\n  <button click=\"{increase}\">increase num</button>\n  <!-- <this> <hr /> is a comment -->\n  <button click=\"{increment}\">increment parent's count</button>\n  <h2>dependency in an expression: {dep + dep}</h2>\n  <input type=\"text\" input=\"{changeDep}\" value=\"{dep}\" />\n  <p>good bye from child now...</p>\n</div>\n\n\n"
+
+        count = 0
+        num = 5
+        foo = 'backup' // default value for prop if undefined
+        dep = 'I am a dependency'
+
+        // increment
+        // ^ note you don't have to declare the prop if you don't need it for type-checking.
+
+        constructor () {
+          // note constructor is not reactive
+          // Will likely have a dedicated lifecycle hook for mounted anyway
+          this.greet();
+        }
+
+        greet () {
+          this.count = 2;
+          this.hi = 'bye';
+          console.log(
+            'prop is available on instance by default',
+            this.hi,
+            this.count
+          );
+          this.num += 100;
+          this.increase();
+        }
+
+        increase () {
+          this.num += 1;
+          this.count += 5;
+        }
+
+        changeDep (e) {
+          this.dep = e.target.value;
+        }
+      }
+
+    class Foo {  template = "<main>\n  Main element here...\n  <p id=\"main-text\" class=\"foo bar moar\" small data-role=\"test\">\n    a paragraph...\n  </p>\n  <hr />\n  <p>this is a prop: {myProp}</p>\n  <p>we can mutate it locally but that will not sync upwards.</p>\n  <input type=\"text\" value=\"{myProp}\" input=\"{mutateProp}\" />\n  <hr />\n  <div>\n    some child...\n    <Child\n      hi=\"{msg}\"\n      increment=\"{increment}\"\n      count=\"{count}\"\n      foobar=\"foobar\"\n    ></Child>\n  </div>\n  <h2 class=\"{style}\">the count is {count}</h2>\n  <button click=\"{increment}\">increment count</button>\n  <button click=\"{decrement}\">decrement count</button>\n  <h3>{msg}, {question}... again: {msg}</h3>\n  <div>\n    <p>lets evaluate and expression:</p>\n    <p>2 + 2 = {2 + 2}</p>\n    <p>Should I stay or should I go? {true ? \"go\" : \"stay\"}</p>\n  </div>\n  <p>items: {msg}</p>\n  <ul>\n    <li each=\"{items as item, index}\" class=\"{style}\">\n      {index + 1}: hi to {item.name}\n    </li>\n  </ul>\n  <br />\n  <div large>\n    <input type=\"text\" value=\"{someText}\" input=\"{handleInput}\" />\n    <p>this is what you entered: {someText}</p>\n    <button click=\"{addText}\">add text to list</button>\n    <button click=\"{clearText}\">clear text</button>\n  </div>\n  <hr />\n  <div>\n    <h3>lets do some conditional rendering</h3>\n    <article if=\"{showArticle}\">~Now you see me~</article>\n    <br />\n    <button click=\"{toggleShow}\">toggle visibility</button>\n  </div>\n  <hr />\n  more main here!\n</main>\n\n\n"
+
+        components = { Child }
+
+        foo = 'oppppSSS!'
+        msg = 'Hello World!'
+        question = 'How are you tonight?'
+        count = 1
+        style = 'counter-class'
+        someText = 'test'
+        items = []
+        showArticle = true
+
+        onMount () {
+          console.log('on mount', (this.count = 3));
+        }
+
+        onDispose () {
+          console.log('on dispose', this.showArticle);
+        }
+
+        increment () {
+          this.count++;
+        }
+
+        decrement () {
+          this.count--;
+        }
+
+        handleInput (e) {
+          this.someText = e.target.value;
+        }
+
+        mutateProp (e) {
+          this.myProp = e.target.value;
+        }
+
+        addText () {
+          this.items = [...this.items, { name: this.someText }];
+        }
+
+        clearText () {
+          this.someText = '';
+        }
+
+        toggleShow () {
+          this.showArticle = !this.showArticle;
+        }
+      }
+
+    class About {  template = "<main>\n  <h1>ABOUT</h1>\n  <Test myProp=\"test Prop\"></Test>\n</main>\n\n\n"
+
+        components = { Test: Foo }
+        
         msg = 'about'
       }
 

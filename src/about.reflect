@@ -1,9 +1,14 @@
 <main>
   <h1>ABOUT</h1>
+  <Test myProp="test Prop"></Test>
 </main>
 
 <script>
+  import Test from './test.reflect'
+
   export default class About {
+    components = { Test }
+    
     msg = 'about'
   }
 </script>

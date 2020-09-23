@@ -8,7 +8,7 @@
   <Router></Router>
 </main>
 
-<script>
+<script>  
   export default class Layout {
     msg = 'layout'
   }
