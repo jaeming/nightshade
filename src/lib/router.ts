@@ -1,8 +1,5 @@
 export type Route = [string, typeof Function]
 
-// TODO: 
-// - cold load
-
 export class Router {
   currentPath: string = '/'
   constructor (public routes: Route[]) {}
