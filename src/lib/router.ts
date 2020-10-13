@@ -1,8 +1,6 @@
 export type Route = [string, typeof Function]
 
 // TODO: 
-// - replace URL
-// - history api
 // - cold load
 
 export class Router {

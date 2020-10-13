@@ -32,7 +32,6 @@ export class Render {
 
   create (opts = {}) {
     if (this.node.hidden) return
-
     this.node.tag === 'text' ? this.createTextNode() : this.createElement()
     if (!this.isEach && !this.node.hidden) this.append(opts)
     if (this.isComponent) return this.createComponent()

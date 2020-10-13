@@ -1,7 +1,7 @@
 import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 import { terser } from 'rollup-plugin-terser'
-import livereload from 'rollup-plugin-livereload'
+import serve from 'rollup-plugin-serve'
 import typescript from '@rollup/plugin-typescript'
 const fs = require('fs')
 
@@ -86,7 +86,12 @@ export default {
   plugins: [
     reflection(),
     typescript({ target: 'esnext' }),
-    livereload(),
+    serve({
+      contentBase: 'public',
+      open: true,
+      historyApiFallback: true,
+      port: 1234,
+    }),
     resolve(),
     commonjs(),
     production && terser() // minify, but only in production
