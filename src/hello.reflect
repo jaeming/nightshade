@@ -1,0 +1,18 @@
+<main>
+  <h1>Dynamic hello route</h1>
+  <p>Hello {title} {router.params.name}</p>
+</main>
+
+<script>
+  import Test from './test.reflect'
+
+  export default class Hello {
+    onMount() {
+      console.log(this.router.params)
+    }
+
+    get title () {
+      return this.router.params.title
+    }
+  }
+</script>

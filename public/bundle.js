@@ -382,11 +382,12 @@
         mountRoutedComponent() {
             this.trackDependency(ROUTER.toLowerCase());
             const Component = this.component.router.currentComponent;
+            this.component.router.updateHistory();
             const instance = new this.Reflection();
+            instance.router = this.component.router;
             instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props);
             this.node.component = instance.proxy;
             this.node.instance = instance;
-            this.component.router.updateHistory();
         }
         updateTextNode() {
             let foundText = false;
@@ -421,14 +422,13 @@
             });
         }
         setRouteLink({ key, value }) {
-            const [path, component] = this.component.router.routes.find(r => r[0] === value);
+            const [_, component] = this.component.router.find(value);
             this.el?.setAttribute(key, value);
-            this.el?.setAttribute('href', path);
-            this.node.routeTo = component;
+            this.el?.setAttribute('href', value);
             const handler = e => {
                 e.preventDefault();
                 const router = this.component.router;
-                router.currentPath = path;
+                router.currentPath = value;
                 this.component.router = router; // force reassignment so proxy picks up update
             };
             this.addListener(CLICK, handler);
@@ -622,14 +622,40 @@
             this.currentPath = '/';
         }
         get currentComponent() {
-            const [_, c] = this.routes.find(([path, component]) => this.currentPath === path);
-            return c;
+            const [_, component] = this.currentRoute;
+            return component;
+        }
+        get path() {
+            const [path, _] = this.currentRoute;
+            return path;
+        }
+        get currentRoute() {
+            return this.find(this.currentPath);
+        }
+        find(path) {
+            return this.routes.find(([p, _c]) => p === path || this.patternMatch(p, path));
         }
         updateHistory() {
             const state = {};
             const title = "";
             const url = this.currentPath;
             history.pushState(state, title, url);
+        }
+        patternMatch(path, comparePath) {
+            const identifiers = path.split('/').filter(i => i[0] !== ':' && i !== '');
+            if (!identifiers.length)
+                return;
+            return identifiers.every(i => comparePath.includes(i));
+        }
+        get params() {
+            if (!this.path.includes(':'))
+                return {};
+            const currentPathParts = this.currentPath.split('/');
+            return this.path.split('/').reduce((memo, part, index) => {
+                if (part[0] === ':')
+                    memo[part.substring(1)] = currentPathParts[index];
+                return memo;
+            }, {});
         }
     }
 
@@ -643,7 +669,7 @@
         }
         mount(Component, element, props = {}) {
             if (this.router)
-                this.router.currentPath = location.pathname;
+                this.router.currentPath = location.pathname; // COLD LOADING BROKE FOR NESTED ?
             this.root = document.querySelector(element);
             this.createComponent(Component, props);
             this.nodes = new TemplateParse(this.component.template).nodes;
@@ -693,7 +719,7 @@
         }
     }
 
-    class Layout {  template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n  </div>\n  <Router></Router>\n</main>\n\n\n"
+    class Layout {  template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n    <br />\n      <a route=\"/hello/Benji/Zie\">Say Hello</a>\n  </div>\n  <Router></Router>\n  <footer>footer</footer>\n</main>\n\n\n"
 
         msg = 'layout'
       }
@@ -796,11 +822,27 @@
         components = { Test: Foo }
         
         msg = 'about'
+
+        onMount() {
+          console.log(this.router);
+        }
+      }
+
+    class Hello {  template = "<main>\n  <h1>Dynamic hello route</h1>\n  <p>Hello {title} {router.params.name}</p>\n</main>\n\n\n"
+
+        onMount() {
+          console.log(this.router.params);
+        }
+
+        get title () {
+          return this.router.params.title
+        }
       }
 
     const router = new Router([
       ['/', Home],
-      ['/about', About]
+      ['/about', About],
+      ['/hello/:name/:title', Hello]
     ]);
 
     const app = new Reflection();

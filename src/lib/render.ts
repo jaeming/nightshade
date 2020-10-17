@@ -107,11 +107,12 @@ export class Render {
   mountRoutedComponent () {
     this.trackDependency(ROUTER.toLowerCase())
     const Component = this.component.router.currentComponent
+    this.component.router.updateHistory()
     const instance = new this.Reflection()
+    instance.router = this.component.router
     instance.mount(Component, `[data-ref="${this.node.id}"]`, this.node.props)
     this.node.component = instance.proxy
     this.node.instance = instance
-    this.component.router.updateHistory()
   }
 
   updateTextNode () {
@@ -151,16 +152,13 @@ export class Render {
   }
 
   setRouteLink ({ key, value }) {
-    const [path, component] = this.component.router.routes.find(
-      r => r[0] === value
-    )
+    const [_, component] = this.component.router.find(value)
     this.el?.setAttribute(key, value)
-    this.el?.setAttribute('href', path)
-    this.node.routeTo = component
+    this.el?.setAttribute('href', value)
     const handler = e => {
       e.preventDefault()
       const router = this.component.router
-      router.currentPath = path
+      router.currentPath = value
       this.component.router = router // force reassignment so proxy picks up update
     }
     this.addListener(CLICK, handler)

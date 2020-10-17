@@ -10,5 +10,9 @@
     components = { Test }
     
     msg = 'about'
+
+    onMount() {
+      console.log(this.router)
+    }
   }
 </script>

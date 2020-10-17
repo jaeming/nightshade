@@ -4,8 +4,11 @@
     <a route="/">Home page</a>
     <br />
     <a route="/about">About page</a>
+    <br />
+      <a route="/hello/Benji/Zie">Say Hello</a>
   </div>
   <Router></Router>
+  <footer>footer</footer>
 </main>
 
 <script>  
