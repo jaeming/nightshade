@@ -669,7 +669,7 @@
         }
         mount(Component, element, props = {}) {
             if (this.router)
-                this.router.currentPath = location.pathname; // COLD LOADING BROKE FOR NESTED ?
+                this.router.currentPath = location.pathname;
             this.root = document.querySelector(element);
             this.createComponent(Component, props);
             this.nodes = new TemplateParse(this.component.template).nodes;
