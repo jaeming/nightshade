@@ -12,7 +12,7 @@
     msg = 'about'
 
     onMount() {
-      console.log(this.router)
+      console.log(this.router.query)
     }
   }
 </script>

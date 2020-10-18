@@ -10,7 +10,7 @@ export default class Reflection {
   router = null
 
   mount (Component, element, props = {}) {
-    if (this.router) this.router.currentPath = location.pathname
+    if (this.router) this.router.currentPath = location.pathname + location.search
     this.root = document.querySelector(element)
     this.createComponent(Component, props)
     this.nodes = new TemplateParse(this.component.template).nodes
