@@ -428,7 +428,12 @@
             const handler = e => {
                 e.preventDefault();
                 const router = this.component.router;
-                router.currentPath = value;
+                if (this.component.router.isChild(value)) {
+                    console.log('I am a nested route...TODO');
+                }
+                else {
+                    router.currentPath = value;
+                }
                 this.component.router = router; // force reassignment so proxy picks up update
             };
             this.addListener(CLICK, handler);
@@ -1433,7 +1438,7 @@
             return this.find(this.currentPath);
         }
         find(path) {
-            return this.routes.find(([p, _c]) => p === path || this.patternMatch(p, path));
+            return this.routes.find(([p, _c]) => p === path || this.patternMatch(p, path)) || this.isChild(path);
         }
         updateHistory() {
             const state = {};
@@ -1446,6 +1451,12 @@
             if (!identifiers.length)
                 return;
             return identifiers.every(i => comparePath.includes(i));
+        }
+        isChild(path) {
+            const [_p, _c, childRoutes] = this.currentRoute;
+            if (!childRoutes)
+                return;
+            return childRoutes.find(([p, _c]) => p === path || this.patternMatch(p, path));
         }
         get params() {
             if (!this.path.includes(':'))
@@ -1501,9 +1512,8 @@
             });
         }
         update(prop, receiver) {
-            console.log('update', String(prop), receiver[prop]);
+            // console.log('update', String(prop), receiver[prop])
             const nodes = this.nodes.filter(n => n.tracks?.has(prop));
-            console.log(nodes);
             new Render(Reflection, nodes, this.proxy, this.root, {
                 update: true,
                 prop
@@ -1523,7 +1533,7 @@
         }
     }
 
-    class Layout {  template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n    <br />\n      <a route=\"/hello/Benji/Zie\">Say Hello</a>\n  </div>\n  <Router></Router>\n  <footer>footer</footer>\n</main>\n\n\n"
+    class Layout {  template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n    <br />\n    <a route=\"/hello/Benji/Zie\">Say Hello</a>\n    <br />\n    <a route=\"/posts\">posts</a>   \n  </div>\n  <Router></Router>\n  <footer>footer</footer>\n</main>\n\n\n"
 
         msg = 'layout'
       }
@@ -1643,10 +1653,23 @@
         }
       }
 
+    class PostsLayout {  template = "<main>\n  <h1>Posts Layout: {msg}</h1>\n  <a route=\"/post\">post</a>\n</main>\n\n\n"
+
+        msg = 'posts is here...'
+      }
+
+    class Post {  template = "<main>\n  <h1>Post Page: {msg}</h1>\n</main>\n\n\n"
+
+        msg = 'I\'m nested in posts layout'
+      }
+
     const router = new Router([
       ['/', Home],
       ['/about', About],
-      ['/hello/:name/:title', Hello]
+      ['/hello/:name/:title', Hello],
+      ['/posts', PostsLayout, [
+        ['/post', Post]
+      ]]
     ]);
 
     const app = new Reflection();

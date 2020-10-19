@@ -5,7 +5,9 @@
     <br />
     <a route="/about">About page</a>
     <br />
-      <a route="/hello/Benji/Zie">Say Hello</a>
+    <a route="/hello/Benji/Zie">Say Hello</a>
+    <br />
+    <a route="/posts">posts</a>   
   </div>
   <Router></Router>
   <footer>footer</footer>

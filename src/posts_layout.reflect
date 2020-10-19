@@ -1,0 +1,10 @@
+<main>
+  <h1>Posts Layout: {msg}</h1>
+  <a route="/post">post</a>
+</main>
+
+<script>
+  export default class PostsLayout {
+    msg = 'posts is here...'
+  }
+</script>

@@ -106,6 +106,8 @@ export class Render {
 
   mountRoutedComponent () {
     this.trackDependency(ROUTER.toLowerCase())
+    // TODO: support nested Routes... 
+    // ^ We'd need to track a dependency different from the parent router and set a handler that updates it
     const Component = this.component.router.currentComponent
     this.component.router.updateHistory()
     const instance = new this.Reflection()
@@ -158,8 +160,14 @@ export class Render {
     const handler = e => {
       e.preventDefault()
       const router = this.component.router
-      router.currentPath = value
-      this.component.router = router // force reassignment so proxy picks up update
+      if (this.component.router.isChild(value)) {
+        console.log('I am a nested route...TODO')
+        // here the handler would need to trigger an update for only the nested ROUTER component. not the parent.
+        // router current path would also need to prefix with parent path ans we'd need to address detecting that. 
+      } else {
+        router.currentPath = value
+        this.component.router = router // force reassignment so proxy picks up update
+      }
     }
     this.addListener(CLICK, handler)
   }

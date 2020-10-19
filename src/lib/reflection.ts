@@ -41,9 +41,8 @@ export default class Reflection {
   }
 
   update (prop, receiver) {
-    console.log('update', String(prop), receiver[prop])
+    // console.log('update', String(prop), receiver[prop])
     const nodes = this.nodes.filter(n => n.tracks?.has(prop))
-    console.log(nodes)
     new Render(Reflection, nodes, this.proxy, this.root, {
       update: true,
       prop

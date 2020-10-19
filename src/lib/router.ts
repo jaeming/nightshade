@@ -21,7 +21,7 @@ export class Router {
   }
 
   find (path) {
-    return this.routes.find(([p, _c]) => p === path || this.patternMatch(p, path))
+    return this.routes.find(([p, _c]) => p === path || this.patternMatch(p, path)) || this.isChild(path)
   }
 
   updateHistory() {
@@ -35,6 +35,13 @@ export class Router {
     const identifiers = path.split('/').filter(i => i[0] !== ':' && i !== '')
     if (!identifiers.length) return
     return identifiers.every(i => comparePath.includes(i))
+  }
+
+  isChild(path) {
+    const [_p, _c, childRoutes] = this.currentRoute
+    if (!childRoutes) return
+
+    return childRoutes.find(([p, _c]) => p === path || this.patternMatch(p, path))
   }
 
   get params() {

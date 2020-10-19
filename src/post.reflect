@@ -1,0 +1,9 @@
+<main>
+  <h1>Post Page: {msg}</h1>
+</main>
+
+<script>
+  export default class Post {
+    msg = 'I\'m nested in posts layout'
+  }
+</script>
