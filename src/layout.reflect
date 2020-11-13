@@ -9,7 +9,7 @@
     <br />
     <a route="/posts">posts</a>   
   </div>
-  <Router></Router>
+  <Router path='/'></Router>
   <footer>footer</footer>
 </main>
 

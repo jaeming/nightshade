@@ -174,7 +174,7 @@
             statement.includes('=') ? setValue() : setKey();
             this.updateCurrentAttr({ statement, key, value });
             if (finishAttr) {
-                value = value.replace(/"/g, ''); // remove escaped quotes
+                value = value.replace(/"|'/g, ''); // remove escaped quotes
                 this.updateCurrentAttr({ value });
                 this.currentNode.attributes.push({ statement: '', key: '', value: '' });
             }
@@ -371,7 +371,7 @@
                 //  update props
                 this.node.component[this.options.prop] = this.component[this.options.prop];
             }
-            if (this.options.prop === ROUTER.toLowerCase()) {
+            if (this.component.router && this.options.prop === ROUTER.toLowerCase()) {
                 console.log("we've re-routed");
                 // dispose old component
                 this.node.instance.dispose();
@@ -384,6 +384,9 @@
             // TODO: support nested Routes... 
             // ^ We'd need to track a dependency different from the parent router and set a handler that updates it
             const Component = this.component.router.currentComponent;
+            const path = this.node?.props?.path;
+            if (!path === this.component.router.path)
+                return;
             this.component.router.updateHistory();
             const instance = new this.Reflection();
             instance.router = this.component.router;
@@ -424,21 +427,21 @@
             });
         }
         setRouteLink({ key, value }) {
-            const [_, component] = this.component.router.find(value);
             this.el?.setAttribute(key, value);
-            this.el?.setAttribute('href', value);
+            // const [path, component] = this.component.router.find(value)
+            const isChild = this.component.router.isChild(value);
+            const link = isChild ? this.component.router.path + value : value;
+            this.el?.setAttribute('href', link);
             const handler = e => {
                 e.preventDefault();
-                const router = this.component.router;
-                if (this.component.router.isChild(value)) {
-                    console.log('I am a nested route...TODO');
-                    // here the handler would need to trigger an update for only the nested ROUTER component. not the parent.
-                    // router current path would also need to prefix with parent path ans we'd need to address detecting that. 
-                }
-                else {
-                    router.currentPath = value;
-                    this.component.router = router; // force reassignment so proxy picks up update
-                }
+                // if (isChild) {
+                //   console.log('I am a nested route...TODO', this.node)
+                //   // here the handler would need to trigger an update for only the nested ROUTER component. not the parent.
+                //   // router current path would also need to prefix with parent path ans we'd need to address detecting that. 
+                // } else {
+                this.component.router.currentPath = value;
+                this.component.router = this.component.router; // force reassignment so proxy picks up update
+                // }
             };
             this.addListener(CLICK, handler);
         }
@@ -1456,11 +1459,13 @@
                 return;
             return identifiers.every(i => comparePath.includes(i));
         }
-        isChild(path) {
-            const [_p, _c, childRoutes] = this.currentRoute;
-            if (!childRoutes)
-                return;
-            return childRoutes.find(([p, _c]) => p === path || this.patternMatch(p, path));
+        isChild(val) {
+            const path = val || this.path;
+            // const [_p, _c, childRoutes] = this.currentRoute
+            // if (!childRoutes) return
+            // return childRoutes.find(([p, _c]) => p === path || this.patternMatch(p, path))
+            console.log('find child...', this.routes.filter(([_p, _c, children]) => children).map(([_p, _c, children]) => children).find(c => c.find(([p]) => p === path)));
+            return this.routes.filter(([_p, _c, children]) => children).map(([_p, _c, children]) => children).find(c => c.find(([p]) => p === path));
         }
         get params() {
             if (!this.path.includes(':'))
@@ -1478,6 +1483,7 @@
         }
     }
 
+    // import { ROUTER } from './types'
     class Reflection {
         constructor() {
             this.root = null;
@@ -1517,7 +1523,16 @@
         }
         update(prop, receiver) {
             // console.log('update', String(prop), receiver[prop])
-            const nodes = this.nodes.filter(n => n.tracks?.has(prop));
+            let nodes = this.nodes.filter(n => n.tracks?.has(prop));
+            const [rootPath] = this.router.currentRoute;
+            if (prop === 'router') {
+                // console.log('router', this.router)
+                console.log('child?', this.router.isChild());
+                // console.log('router logic ->')
+                // console.log('nodes', nodes)
+                // nodes = nodes.filter(n => n?.props?.rootPath === rootPath)
+                // console.log('nodes', nodes)
+            }
             new Render(Reflection, nodes, this.proxy, this.root, {
                 update: true,
                 prop
@@ -1537,7 +1552,7 @@
         }
     }
 
-    class Layout {  template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n    <br />\n    <a route=\"/hello/Benji/Zie\">Say Hello</a>\n    <br />\n    <a route=\"/posts\">posts</a>   \n  </div>\n  <Router></Router>\n  <footer>footer</footer>\n</main>\n\n\n"
+    class Layout {  template = "<main>\n  <h1>Layout: {msg}</h1>\n  <div>\n    <a route=\"/\">Home page</a>\n    <br />\n    <a route=\"/about\">About page</a>\n    <br />\n    <a route=\"/hello/Benji/Zie\">Say Hello</a>\n    <br />\n    <a route=\"/posts\">posts</a>   \n  </div>\n  <Router path='/'></Router>\n  <footer>footer</footer>\n</main>\n\n\n"
 
         msg = 'layout'
       }

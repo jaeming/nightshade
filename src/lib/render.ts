@@ -95,7 +95,7 @@ export class Render {
       //  update props
       this.node.component[this.options.prop] = this.component[this.options.prop]
     }
-    if (this.options.prop === ROUTER.toLowerCase()) {
+    if (this.component.router && this.options.prop === ROUTER.toLowerCase()) {
       console.log("we've re-routed")
       // dispose old component
       this.node.instance.dispose()
@@ -109,6 +109,9 @@ export class Render {
     // TODO: support nested Routes... 
     // ^ We'd need to track a dependency different from the parent router and set a handler that updates it
     const Component = this.component.router.currentComponent
+    const path = this.node?.props?.path
+    if (!path === this.component.router.path) return
+
     this.component.router.updateHistory()
     const instance = new this.Reflection()
     instance.router = this.component.router
@@ -154,20 +157,21 @@ export class Render {
   }
 
   setRouteLink ({ key, value }) {
-    const [_, component] = this.component.router.find(value)
     this.el?.setAttribute(key, value)
-    this.el?.setAttribute('href', value)
+    // const [path, component] = this.component.router.find(value)
+    const isChild = this.component.router.isChild(value)
+    const link = isChild ? this.component.router.path + value : value
+    this.el?.setAttribute('href', link)
     const handler = e => {
       e.preventDefault()
-      const router = this.component.router
-      if (this.component.router.isChild(value)) {
-        console.log('I am a nested route...TODO')
-        // here the handler would need to trigger an update for only the nested ROUTER component. not the parent.
-        // router current path would also need to prefix with parent path ans we'd need to address detecting that. 
-      } else {
-        router.currentPath = value
-        this.component.router = router // force reassignment so proxy picks up update
-      }
+      // if (isChild) {
+      //   console.log('I am a nested route...TODO', this.node)
+      //   // here the handler would need to trigger an update for only the nested ROUTER component. not the parent.
+      //   // router current path would also need to prefix with parent path ans we'd need to address detecting that. 
+      // } else {
+        this.component.router.currentPath = value
+        this.component.router = this.component.router // force reassignment so proxy picks up update
+      // }
     }
     this.addListener(CLICK, handler)
   }

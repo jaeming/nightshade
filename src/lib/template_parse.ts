@@ -136,7 +136,7 @@ export class TemplateParse {
     this.updateCurrentAttr({ statement, key, value })
 
     if (finishAttr) {
-      value = value.replace(/"/g, '') // remove escaped quotes
+      value = value.replace(/"|'/g, '') // remove escaped quotes
       this.updateCurrentAttr({ value })
       this.currentNode.attributes.push({ statement: '', key: '', value: '' })
     }

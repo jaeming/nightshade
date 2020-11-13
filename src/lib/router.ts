@@ -1,6 +1,6 @@
 import * as qs from 'qs'
 
-export type Route = [string, typeof Function]
+export type Route = [string, typeof Function, Route[] | undefined]
 
 export class Router {
   currentPath: string = '/'
@@ -38,10 +38,13 @@ export class Router {
   }
 
   isChild(path) {
-    const [_p, _c, childRoutes] = this.currentRoute
-    if (!childRoutes) return
+    // const [_p, _c, childRoutes] = this.currentRoute
+    // if (!childRoutes) return
 
-    return childRoutes.find(([p, _c]) => p === path || this.patternMatch(p, path))
+    // return childRoutes.find(([p, _c]) => p === path || this.patternMatch(p, path))
+    console.log('find child...', this.routes.filter(([_p, _c, children]) => children).map(([_p, _c, children]) => children).find(c => c.find(([p]) => p === path)))
+    return this.routes.filter(([_p, _c, children]) => children).map(([_p, _c, children]) => children).find(c => c.find(([p]) => p === path))
+
   }
 
   get params() {
